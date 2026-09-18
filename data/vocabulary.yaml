@@ -1,0 +1,403 @@
+# Service vocabulary for Precedent.
+#
+# This file is the single source of truth for:
+#   - the enum handed to the extraction model (section 3.6)
+#   - CloudFormation resource type -> service mapping (Appendix A)
+#   - capability classes for the overlap check (section 4)
+#   - the behaviour classes the deterministic post-processor keys off (section 3.7)
+#
+# v0 target: cover the resource types making up >=90% of resources in the
+# SAM/CFN templates of the corpus. Run `make census` before widening this.
+
+services:
+  # --- compute ---
+  lambda:
+    title: AWS Lambda
+    resource_types: [AWS::Serverless::Function, AWS::Lambda::Function]
+    roles: [compute, relay]
+  step_functions:
+    title: AWS Step Functions
+    resource_types: [AWS::Serverless::StateMachine, AWS::StepFunctions::StateMachine]
+    roles: [compute, orchestrator, relay]
+  ecs:
+    title: Amazon ECS
+    resource_types: [AWS::ECS::Service, AWS::ECS::TaskDefinition, AWS::ECS::Cluster]
+    roles: [compute, relay]
+  fargate:
+    title: AWS Fargate
+    resource_types: []
+    roles: [compute, relay]
+
+  # --- api front ---
+  apigateway:
+    title: Amazon API Gateway
+    # Sub-resources map to the parent. A Method or a Route is part of the API,
+    # not a separate node in the architecture graph. Counts from the census on
+    # corpus commit 3d39819: 190 ApiGateway::* and 130 ApiGatewayV2::* instances
+    # that would otherwise read as uncovered.
+    resource_types:
+      - AWS::Serverless::Api
+      - AWS::Serverless::HttpApi
+      - AWS::ApiGateway::RestApi
+      - AWS::ApiGatewayV2::Api
+      - AWS::ApiGateway::Method
+      - AWS::ApiGateway::Resource
+      - AWS::ApiGateway::Deployment
+      - AWS::ApiGateway::Stage
+      - AWS::ApiGateway::Authorizer
+      - AWS::ApiGateway::Model
+      - AWS::ApiGateway::RequestValidator
+      - AWS::ApiGateway::UsagePlan
+      - AWS::ApiGateway::UsagePlanKey
+      - AWS::ApiGateway::ApiKey
+      - AWS::ApiGateway::VpcLink
+      - AWS::ApiGateway::DomainName
+      - AWS::ApiGateway::BasePathMapping
+      - AWS::ApiGateway::GatewayResponse
+      - AWS::ApiGateway::Account
+      - AWS::ApiGatewayV2::Route
+      - AWS::ApiGatewayV2::Integration
+      - AWS::ApiGatewayV2::Stage
+      - AWS::ApiGatewayV2::Deployment
+      - AWS::ApiGatewayV2::IntegrationResponse
+      - AWS::ApiGatewayV2::RouteResponse
+      - AWS::ApiGatewayV2::Authorizer
+      - AWS::ApiGatewayV2::DomainName
+      - AWS::ApiGatewayV2::ApiMapping
+    roles: [api_front, relay]
+  appsync:
+    title: AWS AppSync
+    resource_types:
+      - AWS::AppSync::GraphQLApi
+      - AWS::AppSync::Resolver
+      - AWS::AppSync::DataSource
+      - AWS::AppSync::GraphQLSchema
+      - AWS::AppSync::ApiKey
+      - AWS::AppSync::FunctionConfiguration
+      - AWS::Serverless::GraphQLApi
+    roles: [api_front, relay]
+  cloudfront:
+    title: Amazon CloudFront
+    resource_types: [AWS::CloudFront::Distribution]
+    roles: [api_front, cdn, relay]
+  lambda_function_url:
+    title: Lambda Function URL
+    resource_types: [AWS::Lambda::Url]
+    roles: [api_front, relay]
+
+  # --- messaging ---
+  sqs:
+    title: Amazon SQS
+    resource_types: [AWS::SQS::Queue]
+    roles: [messaging, pull_source, relay]
+  sns:
+    title: Amazon SNS
+    resource_types: [AWS::SNS::Topic, AWS::SNS::Subscription]
+    roles: [messaging, relay]
+  eventbridge:
+    title: Amazon EventBridge
+    resource_types:
+      - AWS::Events::Rule
+      - AWS::Events::EventBus
+      - AWS::Pipes::Pipe
+      - AWS::Events::Connection
+      - AWS::Events::ApiDestination
+    roles: [messaging, relay]
+  eventbridge_scheduler:
+    title: Amazon EventBridge Scheduler
+    resource_types: [AWS::Scheduler::Schedule, AWS::Scheduler::ScheduleGroup]
+    roles: [messaging]
+  kinesis_streams:
+    title: Amazon Kinesis Data Streams
+    resource_types: [AWS::Kinesis::Stream]
+    roles: [messaging, pull_source, relay]
+  firehose:
+    title: Amazon Data Firehose
+    resource_types: [AWS::KinesisFirehose::DeliveryStream]
+    roles: [messaging, relay]
+
+  # --- storage / data ---
+  s3:
+    title: Amazon S3
+    resource_types: [AWS::S3::Bucket]
+    roles: [storage, relay]     # emits event notifications
+  dynamodb:
+    title: Amazon DynamoDB
+    resource_types: [AWS::DynamoDB::Table, AWS::Serverless::SimpleTable]
+    roles: [database, relay]    # emits change streams
+    # Deliberately NOT pull_source. A Lambda writing to a table and a stream
+    # triggering a Lambda are both valid, in opposite directions. Collapsing
+    # them loses the write. Stream edges come from the template parser or from
+    # explicit "stream triggers" wording, which models already get right.
+  rds:
+    title: Amazon RDS
+    resource_types: [AWS::RDS::DBInstance]
+    roles: [database]
+  aurora:
+    title: Amazon Aurora
+    resource_types: [AWS::RDS::DBCluster]
+    roles: [database]
+  elasticache:
+    title: Amazon ElastiCache
+    resource_types: [AWS::ElastiCache::CacheCluster]
+    roles: [database]
+  opensearch:
+    title: Amazon OpenSearch Service
+    resource_types:
+      - AWS::OpenSearchService::Domain
+      - AWS::Elasticsearch::Domain
+      - AWS::OpenSearchServerless::Collection
+    roles: [database]
+  athena:
+    title: Amazon Athena
+    resource_types: [AWS::Athena::WorkGroup]
+    roles: [analytics]
+  glue:
+    title: AWS Glue
+    resource_types: [AWS::Glue::Job, AWS::Glue::Crawler]
+    roles: [analytics]
+
+  alb:
+    title: Application Load Balancer
+    resource_types: [AWS::ElasticLoadBalancingV2::LoadBalancer]
+    roles: [api_front, relay]
+  amazonmq:
+    title: Amazon MQ
+    resource_types: [AWS::AmazonMQ::Broker]
+    roles: [messaging, relay]
+  iot_core:
+    title: AWS IoT Core
+    resource_types: [AWS::IoT::TopicRule]
+    roles: [messaging, relay]
+
+  # --- identity ---
+  cognito:
+    title: Amazon Cognito
+    resource_types:
+      - AWS::Cognito::UserPool
+      - AWS::Cognito::IdentityPool
+      - AWS::Cognito::UserPoolClient
+      - AWS::Cognito::UserPoolDomain
+      - AWS::Cognito::UserPoolGroup
+      - AWS::Cognito::IdentityPoolRoleAttachment
+    roles: [auth]
+
+  # --- call-only services -------------------------------------------------
+  # Reached through an SDK call. They do not originate edges unless the design
+  # explicitly says they emit something. Post-processor rule A (section 3.7).
+  textract:
+    title: Amazon Textract
+    resource_types: []
+    roles: [call_only, ml]
+  rekognition:
+    title: Amazon Rekognition
+    resource_types: []
+    roles: [call_only, ml]
+  comprehend:
+    title: Amazon Comprehend
+    resource_types: []
+    roles: [call_only, ml]
+  bedrock:
+    title: Amazon Bedrock
+    resource_types: []
+    roles: [call_only, ml]
+  polly:
+    title: Amazon Polly
+    resource_types: []
+    roles: [call_only, ml]
+  translate:
+    title: Amazon Translate
+    resource_types: []
+    roles: [call_only, ml]
+  ses:
+    title: Amazon SES
+    resource_types: [AWS::SES::ConfigurationSet]
+    roles: [call_only, notification]
+  secrets_manager:
+    title: AWS Secrets Manager
+    resource_types: [AWS::SecretsManager::Secret]
+    roles: [call_only, config]
+  ssm_parameter_store:
+    title: AWS Systems Manager Parameter Store
+    resource_types: [AWS::SSM::Parameter]
+    roles: [call_only, config]
+
+  # --- misc ---
+  cloudwatch:
+    title: Amazon CloudWatch
+    resource_types: [AWS::CloudWatch::Alarm, AWS::CloudWatch::Dashboard]
+    roles: [observability]
+  route53:
+    title: Amazon Route 53
+    resource_types: [AWS::Route53::HostedZone]
+    roles: [network]
+  amplify:
+    title: AWS Amplify Hosting
+    resource_types: [AWS::Amplify::App, AWS::Amplify::Branch]
+    roles: [hosting]
+
+# Capability classes for the overlap check. Two services in the same class that
+# share both an upstream and a downstream get flagged as possibly redundant.
+capability_classes:
+  messaging: [sqs, sns, eventbridge, kinesis_streams]
+  database: [dynamodb, rds, aurora, elasticache, opensearch]
+  api_front: [apigateway, appsync, lambda_function_url]
+
+# Services that can call any AWS API through the SDK. Edges out of these are
+# treated as supported by the rules engine (section 4, edge grounding).
+sdk_capable: [lambda, step_functions, ecs, fargate]
+
+# Relations that indicate a compute node is CONSUMING from a pull-based source.
+# Rule C reverses these to source -> consumer. "sends"/"publishes"/"writes" are
+# deliberately absent: a Lambda sending to a queue is a real, correct edge.
+consume_relations: [triggers, subscribes, reads, flows_to]
+
+# --------------------------------------------------------------------------
+# Deliberately excluded resource types.
+#
+# Gate 1 in the plan allows the vocabulary to either cover >=90% of resource
+# instances OR "explicitly list what's excluded". This is that list, and it
+# exists because raw coverage is a misleading number: most uncovered resources
+# are not services at all.
+#
+# Three kinds of thing live here:
+#   1. IAM and policy glue. A Lambda::Permission is how one service is allowed
+#      to invoke another, not an architectural connection of its own. The edge
+#      it implies is already captured from the Events or EventSourceMapping.
+#   2. VPC and networking plumbing. Subnets and route tables do not appear in a
+#      service-to-service architecture diagram.
+#   3. Packaging and deployment meta. Layers, versions, aliases, nested stacks.
+#
+# Anything matching these is counted as CLASSIFIED, not as a coverage miss.
+# --------------------------------------------------------------------------
+ignored_resource_types:
+  exact:
+    - AWS::Lambda::Permission
+    - AWS::Lambda::Version
+    - AWS::Lambda::Alias
+    - AWS::Lambda::LayerVersion
+    - AWS::Lambda::LayerVersionPermission
+    - AWS::Lambda::MicrovmImage
+    - AWS::Lambda::EventInvokeConfig
+    - AWS::SQS::QueuePolicy
+    - AWS::SNS::TopicPolicy
+    - AWS::S3::BucketPolicy
+    - AWS::Route53::RecordSet
+    - AWS::Route53::RecordSetGroup
+    - AWS::Serverless::LayerVersion
+    - AWS::Serverless::Application
+    - AWS::OpenSearchServerless::SecurityPolicy
+    - AWS::OpenSearchServerless::AccessPolicy
+    - AWS::OpenSearchServerless::LifecyclePolicy
+  # any type starting with one of these namespaces is plumbing
+  prefixes:
+    # Log groups and IAM roles exist in almost every template. An edge to them
+    # is universal and therefore carries no precedent signal, and their
+    # frequency would distort the IDF weighting used to rank closest patterns.
+    - "AWS::Logs::"
+    - "AWS::IAM::"
+    - "AWS::EC2::"
+    - "AWS::KMS::"
+    - "AWS::CloudFormation::"
+    - "AWS::CertificateManager::"
+    - "AWS::ResourceGroups::"
+    - "AWS::ApplicationAutoScaling::"
+    - "AWS::AutoScaling::"
+
+# --------------------------------------------------------------------------
+# Edge-producing constructs.
+#
+# These are not service nodes and they are not plumbing. They are the resources
+# the template parser reads to DISCOVER an edge between two other resources.
+# AWS::Lambda::EventSourceMapping is the clearest case: it is how SQS, Kinesis
+# and DynamoDB Streams trigger a Lambda, and it is a P0 parser rule in
+# Appendix A of the plan. It appears only 4 times in the corpus because SAM
+# templates usually express the same thing through a function's Events block,
+# but in hand-written CloudFormation it is the only signal there is.
+#
+# Counted as classified. The parser must never turn one into a node.
+# --------------------------------------------------------------------------
+edge_constructs:
+  - AWS::Lambda::EventSourceMapping
+  - AWS::ElasticLoadBalancingV2::Listener
+  - AWS::ElasticLoadBalancingV2::ListenerRule
+  - AWS::ElasticLoadBalancingV2::TargetGroup
+  - AWS::ApiGatewayV2::Integration
+  - AWS::ApiGateway::Method
+  - AWS::ApiGateway::Authorizer
+  - AWS::ApiGatewayV2::Authorizer
+  - AWS::SNS::Subscription
+  - AWS::Pipes::Pipe
+  - AWS::Events::Rule
+
+# --------------------------------------------------------------------------
+# Sub-resources.
+#
+# These map to a parent service so the census counts them as understood, but
+# they must never become their own node. A REST API made of a RestApi, a
+# Deployment, a Stage and three Methods is ONE API Gateway in an architecture
+# diagram, not six.
+#
+# Without this the parser produced four apigateway nodes for a four-resource
+# API, inflating node counts across the corpus and splitting edges that should
+# have landed on a single endpoint.
+# --------------------------------------------------------------------------
+sub_resource_types:
+  - AWS::ApiGateway::Method
+  - AWS::ApiGateway::Authorizer
+  - AWS::ApiGatewayV2::Authorizer
+  - AWS::ApiGateway::Resource
+  - AWS::ApiGateway::Deployment
+  - AWS::ApiGateway::Stage
+  - AWS::ApiGateway::Authorizer
+  - AWS::ApiGateway::Model
+  - AWS::ApiGateway::RequestValidator
+  - AWS::ApiGateway::UsagePlan
+  - AWS::ApiGateway::UsagePlanKey
+  - AWS::ApiGateway::ApiKey
+  - AWS::ApiGateway::VpcLink
+  - AWS::ApiGateway::DomainName
+  - AWS::ApiGateway::BasePathMapping
+  - AWS::ApiGateway::GatewayResponse
+  - AWS::ApiGateway::Account
+  - AWS::ApiGatewayV2::Route
+  - AWS::ApiGatewayV2::Integration
+  - AWS::ApiGatewayV2::Stage
+  - AWS::ApiGatewayV2::Deployment
+  - AWS::ApiGatewayV2::IntegrationResponse
+  - AWS::ApiGatewayV2::RouteResponse
+  - AWS::ApiGatewayV2::Authorizer
+  - AWS::ApiGatewayV2::DomainName
+  - AWS::ApiGatewayV2::ApiMapping
+  - AWS::AppSync::Resolver
+  - AWS::AppSync::DataSource
+  - AWS::AppSync::GraphQLSchema
+  - AWS::AppSync::ApiKey
+  - AWS::AppSync::FunctionConfiguration
+  - AWS::Cognito::UserPoolClient
+  - AWS::Cognito::UserPoolDomain
+  - AWS::Cognito::UserPoolGroup
+  - AWS::Cognito::IdentityPoolRoleAttachment
+  - AWS::CloudWatch::Dashboard
+
+# --------------------------------------------------------------------------
+# Relays.
+#
+# The `relay` role above marks a service that can sit in the MIDDLE of a repair
+# path: it can receive from one service and then emit to another. Lambda calls
+# things. A queue delivers. S3 emits notifications and DynamoDB emits streams.
+#
+# The services WITHOUT it are the interesting ones:
+#   - auth (Cognito) authorizes; it does not carry traffic onward
+#   - call_only services (Textract, SES, Secrets Manager) never emit at all
+#   - RDS, Aurora, ElastiCache and OpenSearch have no event stream
+#
+# Without this, repair suggested "cognito -> lambda -> apigateway" for a Cognito
+# authorizer edge: every hop was individually well precedented and the path as a
+# whole was nonsense.
+#
+# Relations that describe configuration rather than data or control flow. A path
+# made of flow edges cannot substitute for one of these, so they are never
+# offered a repair.
+configuration_relations:
+  - configured_with

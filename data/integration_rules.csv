@@ -1,0 +1,40 @@
+rule_id,src_service,dst_service,relation_scope,direct_supported,doc_url,verified_by,note
+R001,s3,lambda,event_notification,true,https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-how-to-event-types-and-destinations.html,,S3 event notifications support Lambda as a destination.
+R002,s3,sqs,event_notification,true,https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-how-to-event-types-and-destinations.html,,S3 event notifications support SQS queues as a destination.
+R003,s3,sns,event_notification,true,https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-how-to-event-types-and-destinations.html,,S3 event notifications support SNS topics as a destination.
+R004,s3,eventbridge,event_notification,true,https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html,,S3 can send all events to the default EventBridge bus.
+R005,s3,step_functions,event_notification,false,https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-how-to-event-types-and-destinations.html,,"S3 cannot start a state machine directly. Route through EventBridge, or through Lambda."
+R006,s3,dynamodb,event_notification,false,https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-how-to-event-types-and-destinations.html,,S3 has no direct write integration to DynamoDB. Compute has to sit between them.
+R007,s3,kinesis_streams,event_notification,false,https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-how-to-event-types-and-destinations.html,,Kinesis Data Streams is not an S3 event notification destination.
+R010,sqs,lambda,event_source_mapping,true,https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html,,Lambda polls SQS through an event source mapping.
+R011,sqs,step_functions,event_source_mapping,false,https://docs.aws.amazon.com/step-functions/latest/dg/concepts-invoke-sfn.html,,"A queue cannot start a state machine on its own. Use EventBridge Pipes, or a Lambda."
+R012,sqs,dynamodb,event_source_mapping,false,https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html,,SQS has no direct write integration to DynamoDB.
+R013,sqs,eventbridge,pipes,true,https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes.html,,EventBridge Pipes accepts SQS as a source.
+R020,dynamodb,lambda,stream,true,https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.Lambda.html,,DynamoDB Streams triggers Lambda through an event source mapping.
+R021,dynamodb,step_functions,stream,false,https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html,,"A DynamoDB stream cannot start a state machine directly. Use EventBridge Pipes, or a Lambda."
+R022,dynamodb,sns,stream,false,https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html,,A DynamoDB stream cannot publish to SNS directly.
+R023,dynamodb,eventbridge,pipes,true,https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes.html,,EventBridge Pipes accepts a DynamoDB stream as a source.
+R030,sns,lambda,subscription,true,https://docs.aws.amazon.com/sns/latest/dg/sns-event-destinations.html,,Lambda is a supported SNS subscription protocol.
+R031,sns,sqs,subscription,true,https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html,,SQS is a supported SNS subscription protocol.
+R032,sns,firehose,subscription,true,https://docs.aws.amazon.com/sns/latest/dg/sns-firehose-as-subscriber.html,,Data Firehose is a supported SNS subscription protocol.
+R033,sns,step_functions,subscription,false,https://docs.aws.amazon.com/sns/latest/dg/sns-event-destinations.html,,Step Functions is not an SNS subscription protocol.
+R034,sns,dynamodb,subscription,false,https://docs.aws.amazon.com/sns/latest/dg/sns-event-destinations.html,,DynamoDB is not an SNS subscription protocol.
+R035,sns,s3,subscription,false,https://docs.aws.amazon.com/sns/latest/dg/sns-event-destinations.html,,S3 is not an SNS subscription protocol.
+R040,eventbridge,lambda,rule_target,true,https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html,,Lambda is a supported EventBridge rule target.
+R041,eventbridge,sqs,rule_target,true,https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html,,SQS is a supported EventBridge rule target.
+R042,eventbridge,sns,rule_target,true,https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html,,SNS is a supported EventBridge rule target.
+R043,eventbridge,step_functions,rule_target,true,https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html,,Step Functions is a supported EventBridge rule target.
+R044,eventbridge,kinesis_streams,rule_target,true,https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html,,Kinesis Data Streams is a supported EventBridge rule target.
+R045,eventbridge,firehose,rule_target,true,https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html,,Data Firehose is a supported EventBridge rule target.
+R046,eventbridge,dynamodb,rule_target,false,https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html,,"DynamoDB is not an EventBridge rule target. Put Lambda, or a Step Functions SDK integration, between them."
+R047,eventbridge,s3,rule_target,false,https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html,,"S3 is not an EventBridge rule target. Route through Data Firehose, or through Lambda."
+R050,kinesis_streams,lambda,event_source_mapping,true,https://docs.aws.amazon.com/lambda/latest/dg/with-kinesis.html,,Lambda reads a Kinesis stream through an event source mapping.
+R051,kinesis_streams,step_functions,event_source_mapping,false,https://docs.aws.amazon.com/step-functions/latest/dg/concepts-invoke-sfn.html,,A Kinesis stream cannot start a state machine directly. Use EventBridge Pipes.
+R052,kinesis_streams,firehose,delivery,true,https://docs.aws.amazon.com/firehose/latest/dev/writing-with-kinesis-streams.html,,Data Firehose can read directly from a Kinesis data stream.
+R060,apigateway,lambda,integration,true,https://docs.aws.amazon.com/apigateway/latest/developerguide/getting-started-with-lambda-integration.html,,Lambda proxy and non-proxy integrations are supported.
+R061,apigateway,sqs,integration,true,https://docs.aws.amazon.com/apigateway/latest/developerguide/integrating-api-with-aws-services-sqs.html,,API Gateway supports an AWS service integration to SQS.
+R062,apigateway,dynamodb,integration,true,https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-aws-services.html,,API Gateway supports an AWS service integration to DynamoDB.
+R063,apigateway,step_functions,integration,true,https://docs.aws.amazon.com/step-functions/latest/dg/tutorial-api-gateway.html,,API Gateway can start a state machine through a service integration.
+R064,apigateway,eventbridge,integration,true,https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-api-destinations.html,,HTTP API supports the EventBridge PutEvents subtype.
+R070,cognito,lambda,trigger,true,https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-identity-pools-working-with-aws-lambda-triggers.html,,A user pool invokes Lambda triggers at defined lifecycle points.
+R071,cognito,apigateway,authorizer,true,https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html,,A Cognito user pool can authorize an API Gateway API.

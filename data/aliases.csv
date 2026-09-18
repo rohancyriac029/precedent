@@ -1,0 +1,167 @@
+alias,service
+s3,s3
+amazon s3,s3
+simple storage service,s3
+bucket,s3
+s3 bucket,s3
+object storage,s3
+upload bucket,s3
+media bucket,s3
+data lake,s3
+lambda,lambda
+aws lambda,lambda
+lambda function,lambda
+function,lambda
+serverless function,lambda
+handler,lambda
+worker,lambda
+processor,lambda
+dynamodb,dynamodb
+amazon dynamodb,dynamodb
+dynamo,dynamodb
+ddb,dynamodb
+dynamodb table,dynamodb
+nosql table,dynamodb
+table,dynamodb
+sqs,sqs
+amazon sqs,sqs
+simple queue service,sqs
+queue,sqs
+message queue,sqs
+sqs queue,sqs
+dead letter queue,sqs
+sns,sns
+amazon sns,sns
+simple notification service,sns
+topic,sns
+sns topic,sns
+pub sub topic,sns
+eventbridge,eventbridge
+amazon eventbridge,eventbridge
+event bridge,eventbridge
+event bus,eventbridge
+eventbridge bus,eventbridge
+cloudwatch events,eventbridge
+eventbridge pipes,eventbridge
+eventbridge rule,eventbridge
+eventbridge scheduler,eventbridge_scheduler
+scheduler,eventbridge_scheduler
+cron,eventbridge_scheduler
+api gateway,apigateway
+apigateway,apigateway
+amazon api gateway,apigateway
+apigw,apigateway
+rest api,apigateway
+http api,apigateway
+api,apigateway
+websocket api,apigateway
+gateway,apigateway
+appsync,appsync
+aws appsync,appsync
+graphql api,appsync
+graphql,appsync
+step functions,step_functions
+aws step functions,step_functions
+stepfunctions,step_functions
+state machine,step_functions
+sfn,step_functions
+workflow,step_functions
+orchestrator,step_functions
+kinesis,kinesis_streams
+kinesis data streams,kinesis_streams
+kinesis stream,kinesis_streams
+data stream,kinesis_streams
+firehose,firehose
+kinesis firehose,firehose
+data firehose,firehose
+delivery stream,firehose
+cognito,cognito
+amazon cognito,cognito
+user pool,cognito
+cognito user pool,cognito
+identity pool,cognito
+auth,cognito
+authentication,cognito
+cloudfront,cloudfront
+amazon cloudfront,cloudfront
+cdn,cloudfront
+distribution,cloudfront
+rds,rds
+amazon rds,rds
+relational database,rds
+postgres,rds
+mysql,rds
+aurora,aurora
+amazon aurora,aurora
+aurora serverless,aurora
+elasticache,elasticache
+redis,elasticache
+memcached,elasticache
+cache,elasticache
+opensearch,opensearch
+amazon opensearch,opensearch
+elasticsearch,opensearch
+search,opensearch
+search index,opensearch
+athena,athena
+amazon athena,athena
+glue,glue
+aws glue,glue
+etl job,glue
+secrets manager,secrets_manager
+aws secrets manager,secrets_manager
+secretsmanager,secrets_manager
+secret,secrets_manager
+parameter store,ssm_parameter_store
+ssm,ssm_parameter_store
+systems manager,ssm_parameter_store
+ses,ses
+amazon ses,ses
+simple email service,ses
+email service,ses
+email,ses
+textract,textract
+amazon textract,textract
+ocr,textract
+document analysis,textract
+rekognition,rekognition
+amazon rekognition,rekognition
+image recognition,rekognition
+label detection,rekognition
+comprehend,comprehend
+amazon comprehend,comprehend
+sentiment analysis,comprehend
+nlp,comprehend
+bedrock,bedrock
+amazon bedrock,bedrock
+foundation model,bedrock
+llm,bedrock
+polly,polly
+amazon polly,polly
+text to speech,polly
+translate,translate
+amazon translate,translate
+ecs,ecs
+amazon ecs,ecs
+container service,ecs
+fargate,fargate
+aws fargate,fargate
+alb,alb
+application load balancer,alb
+load balancer,alb
+elb,alb
+amazonmq,amazonmq
+amazon mq,amazonmq
+activemq,amazonmq
+rabbitmq,amazonmq
+iot core,iot_core
+aws iot,iot_core
+iot,iot_core
+lambda function url,lambda_function_url
+function url,lambda_function_url
+amplify,amplify
+amplify hosting,amplify
+aws amplify,amplify
+cloudwatch,cloudwatch
+amazon cloudwatch,cloudwatch
+alarm,cloudwatch

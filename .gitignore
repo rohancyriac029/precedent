@@ -1,0 +1,36 @@
+# secrets - never commit
+.env
+.env.*
+!.env.example
+*.pem
+*-api-key*
+
+# generated data
+corpus/
+.cache/
+data/precedent.sqlite
+*.sqlite
+eval/results/*.json
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# node / frontend
+node_modules/
+web/dist/
+
+# sam / aws
+.aws-sam/
+samconfig.toml.bak
+# vendored arm64 wheels, rebuilt by `python tasks.py package`
+build/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,9 @@
+# Lambda runtime dependencies. Keep this list small: it is the deployment package.
+# Nothing here may pull in torch. See CLAUDE.md rule 5.
+pydantic>=2.9
+pyyaml>=6.0
+cfn-flip>=1.3
+networkx>=3.2
+rank-bm25>=0.2.2
+httpx>=0.27
+mangum>=0.17
