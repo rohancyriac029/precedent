@@ -181,3 +181,21 @@ def test_oversize_input_is_refused():
     with pytest.raises(InputError) as exc:
         build_graph("mermaid", "A[x] --> B[y]\n" * 40000)
     assert "too_large" in str(exc.value)
+
+
+def test_summary_grammar_agrees_with_counts():
+    """The summary is the headline of every report; "1 have" reads as broken."""
+    from core.grounding import summarize
+    from core.models import Edge, EdgeVerdict
+
+    def v(label, a="s3", b="lambda"):
+        return EdgeVerdict(src_service=a, dst_service=b, edge=Edge(src="x", dst="y"), label=label)
+
+    one = summarize([v("GROUNDED"), v("UNPRECEDENTED_IN_CORPUS", "s3", "step_functions")], [])
+    assert "1 of 2 connections is well precedented" in one
+    assert "1 has no precedent" in one
+    assert " have " not in one
+
+    many = summarize([v("RARE", "a", "b"), v("RARE", "c", "d")], [])
+    assert "0 of 2 connections are well precedented" in many
+    assert "2 appear in only one or two patterns" in many

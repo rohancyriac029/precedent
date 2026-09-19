@@ -22,7 +22,7 @@ api:
 	python -m uvicorn api.app:app --host 127.0.0.1 --port 8000 --reload
 
 web:
-	cd web && npm run dev
+	cd ../frontend && npm run dev
 
 build:
 	sam build --template infra/template.yaml

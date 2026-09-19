@@ -510,7 +510,7 @@ api:         # uvicorn api.app:app --port 8000    (local dev)
 web:         # cd web && npm run dev
 build:       # sam build
 deploy:      # sam deploy --guided (first) / sam deploy
-web-deploy:  # git push to the Amplify-connected branch (or `amplify publish` for manual deploys)
+web-deploy:  # python tasks.py web-deploy  (build frontend/ against the stack ApiUrl, zip, Amplify manual deploy)
 eval:        # run all eval/run_*.py, write eval/results/
 demo-check:  # run frozen demo inputs against the DEPLOYED url, diff vs expected
 smoke:       # curl /health and one known audit against the deployed url
@@ -653,19 +653,25 @@ rule_id,src_service,dst_service,relation_scope,direct_supported,doc_url,verified
 
 Hours assume a 48-hour event. If your event is shorter, keep the order and cut from the end.
 
+> **Status as of 2026-09-20.** Ticks below were checked against evidence, not memory.
+> Layout has changed since this plan was written: Python lives under `backend/`
+> (so `core/` means `backend/core/`), and `web/` is now `frontend/`, a React app.
+> `api/main.py` is `backend/api/app.py`. `make` targets are `python tasks.py <task>`.
+> Partial items stay unticked with a note saying what is missing.
+
 ### Stage 0 — Environment and decisions (H0–H2)
 
-- [ ] Repo created with layout from section 5, `CLAUDE.md`, `.env.example`, `.gitignore` (corpus/, .cache/, *.sqlite, .env).
-- [ ] Python env and `pytest` running on an empty test.
-- [ ] `web/` Vite app boots.
-- [ ] `core/models.py` written (section 6). Three fixture reports in `tests/fixtures/reports/`.
-- [ ] AWS account usable: CLI configured, region chosen and written down, SAM CLI installed.
-- [ ] **Deploy a hello-world stack today.** `infra/template.yaml` with one Lambda behind the HTTP API, deployed, returning `{"ok":true}` from a real URL. Deployment is on the critical path now; discovering IAM or packaging problems at H40 is fatal.
-- [ ] Bedrock: `GET /v1/models` succeeds, `zai.glm-4.7-flash` answers one schema-constrained call. Key stored in Secrets Manager, not in `.env` on a shared machine.
+- [x] Repo created with `CLAUDE.md`, `.env.example`, `.gitignore` (corpus/, .cache/, *.sqlite, .env). Now split into `backend/` and `frontend/`.
+- [x] Python env and `pytest` running. 206 tests passing.
+- [x] Frontend Vite app boots (`frontend/`, React).
+- [ ] `core/models.py` written (section 6). **Not done: the three fixture reports** in `tests/fixtures/reports/`; the folder is empty.
+- [x] AWS account usable: IAM user `precedent-dev`, region `ap-south-1`, SAM CLI 1.166.2.
+- [x] **Deploy a hello-world stack today.** `infra/template.yaml` with one Lambda behind the HTTP API, deployed, returning `{"ok":true}` from a real URL. Deployment is on the critical path now; discovering IAM or packaging problems at H40 is fatal.
+- [x] Bedrock: `GET /v1/models` succeeds, `zai.glm-4.7-flash` answers schema-constrained calls. Key in Secrets Manager for the deployed app; locally in git-ignored `backend/.env`.
 - [ ] **Ask how long the issued Bedrock key lasts.** If it is short-lived, plan rotation before judging and write the procedure in the README.
-- [ ] Ollama fallback: `qwen2.5:7b` pulled, one JSON-schema call succeeds. Used for offline development and as the demo backup.
+- [x] Ollama fallback: `qwen2.5:7b` pulled, JSON-schema calls succeed (benchmarked). Used for offline development and as the demo backup.
 - [ ] Hackathon rules checked: is cloning a public repo before start allowed? Is prebuilt data allowed? Is pre-event deployment allowed?
-- [ ] Cost guardrail: a billing alarm on the account, and on-demand billing for DynamoDB.
+- [ ] Cost guardrail: DynamoDB is on-demand. **Not done: the billing alarm.**
 
 **Gate 0:** `make test` passes; fixture reports validate against schemas; **a real URL returns 200**; one Bedrock schema call succeeds.
 
@@ -677,7 +683,7 @@ Hours assume a 48-hour event. If your event is shorter, keep the order and cut f
 - [x] `indexer/census.py` counts pattern directories by framework. **1040 patterns: 483 SAM/CFN, 382 CDK, 129 Terraform, 18 Serverless Framework, 33 other.**
 - [x] Census prints the top resource types in SAM/CFN templates. 239 distinct types, 2914 instances.
 - [x] Vocabulary v0 covers 93.2% of resource instances, counting explicit exclusions. **Raw service mapping is 75.6%**; the gap is IAM, VPC and packaging plumbing, listed under `ignored_resource_types` with a written rationale.
-- [ ] **Demo feasibility check:** confirm the corpus contains patterns for the planned repair path (e.g. S3→EventBridge and EventBridge→Step Functions). If not, choose a different demo edge now.
+- [x] **Demo feasibility check:** S3→EventBridge (12 patterns) and EventBridge→Step Functions (12) confirmed; the repair engine returns exactly that route for S3→Step Functions.
 
 **Gate 1: PASSED** (census in `eval/results/census.json`). Demo repair path still to confirm.
 
@@ -741,12 +747,12 @@ distort the IDF weighting that closest-pattern ranking depends on.
 
 ### Stage 3 — Index and rules (H8–H14)
 
-- [ ] `indexer/build_index.py` writes `patterns` and `edges` to SQLite.
-- [ ] `indexer/coverage_report.py` writes parse coverage and top unparsed constructs to `eval/results/coverage.json`.
-- [ ] Pattern titles/URLs taken from pattern metadata JSON/README where present; URL points to the pattern folder on GitHub at the pinned commit.
-- [ ] BM25 index over README text built and written to `eval/results/` plus S3. No embedding index: see section 3.1.
-- [ ] `data/integration_rules.csv` filled for P0 source services (S3, SQS, SNS, DynamoDB streams, EventBridge, API Gateway). **Every row has a doc URL and `verified_by` initials.** Start from Appendix B seeds; do not trust seeds without checking docs.
-- [ ] `data/aliases.csv` with ≥ 3 aliases per vocabulary service (e.g. "S3", "bucket", "object storage", "upload bucket").
+- [x] `indexer/build_index.py` writes `patterns` and `edges` to SQLite, plus `data/pattern_index.json` for the Lambda.
+- [x] `indexer/coverage_report.py` writes parse coverage and genuine misses to `eval/results/coverage.json`.
+- [x] Pattern titles/URLs taken from pattern metadata; URLs point to the folder on GitHub at the pinned commit.
+- [ ] BM25 index over README text. **Not built.** Closest patterns use IDF containment instead, so nothing depends on it yet.
+- [ ] `data/integration_rules.csv` filled for P0 source services: 39 rules, every one with a doc URL. **Not done: `verified_by` initials on any row**, so no rule affects a verdict yet. 13 of them are the UNSUPPORTED rules.
+- [ ] `data/aliases.csv` written. **Short of 3 aliases for 5 services:** route53 (0), athena, fargate, lambda_function_url and translate (2 each). Example: (e.g. "S3", "bucket", "object storage", "upload bucket").
 
 **Gate 3:** `SELECT count(*) FROM edges` > 0 and edge counts for 5 hand-picked pairs look plausible to a human; rules CSV has no row without a doc URL; `make load` pushes the same counts into DynamoDB and a spot check of 5 pairs matches SQLite exactly.
 
@@ -754,22 +760,22 @@ distort the IDF weighting that closest-pattern ranking depends on.
 
 ### Stage 4 — Deterministic audit core (H12–H20)
 
-- [ ] `grounding.py`: counts + evidence (max 5 patterns per edge).
-- [ ] `rules.py`: label `UNSUPPORTED` with `RuleRef`.
-- [ ] `checks.py`: `ORPHAN`, `OVERLAPPING_CAPABILITY`.
-- [ ] `repair.py`: up to 2 paths, ≤ 3 hops, weights per section 4.
-- [ ] `similarity.py`: closest 5 patterns by containment.
-- [ ] `mermaid_parser.py`: supports `flowchart`/`graph` with `A[label] --> B[label]`, `-->|text|`, chained edges, subgraphs (flatten). Unsupported syntax → warning.
-- [ ] `canonicalize.py`: alias match (case/punctuation-insensitive) then embedding nearest neighbour over alias list with threshold; below threshold → `unknown`.
-- [ ] `report.py`: builds `AuditReport` and deterministic `summary` text from counts (e.g. "7 of 9 connections are grounded; 1 is unsupported (S3 → Step Functions) with a 2-hop repair; 1 has no precedent in this corpus.").
-- [ ] `api/main.py`: `/audits`, `/audits/{id}`, `/patterns/{id}`, `/corpus/stats`, `/health`.
-- [ ] Input limits and parse-error responses implemented.
+- [x] `grounding.py`: counts + evidence (max 5 patterns per edge).
+- [x] `rules.py`: labels `UNSUPPORTED` with `RuleRef`, but only for verified rules.
+- [x] `ORPHAN` and `OVERLAPPING_CAPABILITY` (in `grounding.check_nodes`).
+- [x] `repair.py`: up to 2 paths, ≤ 3 hops, weights per section 4, relay-only intermediates.
+- [x] `similarity.py`: closest 5 patterns by smoothed-IDF containment.
+- [x] `mermaid_parser.py`: supports `flowchart`/`graph` with `A[label] --> B[label]`, `-->|text|`, chained edges, subgraphs (flatten). Unsupported syntax → warning.
+- [x] `canonicalize.py`: alias match, then containment, then `difflib` fuzzy match (not embeddings, per section 3.1); below threshold → `unknown`.
+- [x] `AuditReport` and deterministic `summary` text (in `core/audit.py` and `grounding.summarize`), with singular/plural grammar (e.g. "7 of 9 connections are grounded; 1 is unsupported (S3 → Step Functions) with a 2-hop repair; 1 has no precedent in this corpus.").
+- [x] `/audits`, `/audits/{id}`, `/patterns/{id}`, `/corpus/stats`, `/health`, plus `/rules` and `/extract` (Lambda handlers, and `api/app.py` locally).
+- [x] Input limits (413) and parse-error responses with line/column (400).
 
 **Gate 4 (= H20 CHECKPOINT):**
-- [ ] 3 frozen demo inputs (1 template, 2 Mermaid) produce reports that a human has checked line by line.
-- [ ] `LLM_PROVIDER=none`: all three still work. The deterministic path never depends on Bedrock.
-- [ ] Audit latency without a model call < 1 s locally (record actual).
-- [ ] Same input twice produces an identical report except `audit_id` and timings (E6 quick check).
+- [ ] 3 frozen demo inputs. **Not done:** `data/demo_inputs/` is empty. Sample inputs exist in the frontend but are not frozen with expected reports.
+- [x] `LLM_PROVIDER=none`: template and Mermaid audits work; the deterministic path never calls Bedrock.
+- [x] Audit latency without a model call < 1 s: 40 to 120 ms in-function, 0.12 to 0.29 s end to end deployed.
+- [x] Same input twice produces an identical fingerprint, verified against the deployed endpoint.
 
 **If Gate 4 fails at H20:** cut prose input, saved-audit links, narrative, and all stretch items. Everyone works on the core until it passes. Do not cut deployment; it is the track.
 
@@ -779,39 +785,39 @@ distort the IDF weighting that closest-pattern ranking depends on.
 
 The track is SHIP IT, so this is critical path, not polish.
 
-- [ ] `infra/template.yaml` complete: HTTP API, `extract` and `audit` Lambdas, three DynamoDB tables, the S3 artifacts bucket, the Secrets Manager secret, and least-privilege roles.
-- [ ] Amplify Hosting connected to the repo, building `web/`, serving the public URL over HTTPS, with the API base URL injected at build time.
-- [ ] `indexer/load_ddb.py` pushes the pinned corpus into DynamoDB and the BM25 index into S3. Record the corpus commit in a `meta` item.
-- [ ] `core/store.py` adapter: SQLite locally, DynamoDB deployed, one interface, tests run against SQLite.
-- [ ] Lambdas packaged and under the size limit. Confirm nothing pulled in torch.
-- [ ] Cold start measured and recorded. If it exceeds ~2 s, trim imports before reaching for provisioned concurrency.
-- [ ] CORS restricted to the Amplify Hosting origin; `/extract` rate limited per IP.
-- [ ] `make smoke` hits the deployed `/health` and one known audit, and is run after every deploy.
-- [ ] Saved audits: `GET /audits/{id}` returns a persisted report and the UI has a shareable link.
-- [ ] CloudWatch: structured logs, plus an alarm on Lambda errors and on 5xx at the API.
-- [ ] **Audit our own template.** Run `infra/template.yaml` through the deployed tool. Fix real findings, record the report, and freeze it as a demo input.
+- [x] `infra/template.yaml` complete: HTTP API, `extract` and `audit` Lambdas, three DynamoDB tables, the S3 artifacts bucket, the Secrets Manager secret, and scoped SAM policy roles.
+- [x] Amplify Hosting serving the React build over HTTPS at https://main.d1d8fvj75prbll.amplifyapp.com, with the API base URL injected at build time (`python tasks.py web-deploy`). Verified live: demo audit, saved-audit link, Bedrock prose draft, confirm and audit, clean console, no overflow at 390 px. **Not done:** manual zip deploys; the app is not connected to the repo, so a push does not redeploy.
+- [ ] `indexer/load_ddb.py` pushes the pinned corpus into DynamoDB (65 pairs, 483 patterns, spot-checked equal to SQLite). **Not done:** the BM25 upload; the commit is a stack parameter, not a `meta` item.
+- [x] `core/store.py` adapter: SQLite locally, DynamoDB deployed, one interface, tests run against SQLite.
+- [x] Lambdas packaged at 19 MB unzipped, arm64 wheels, no torch. Deploy the raw template; `sam build` strips the `.so` files.
+- [x] Cold start measured: 1.09 s.
+- [ ] CORS restricted to the Amplify origin; `/extract` rate limited per IP. **Not done:** CORS is `*`, and throttling is 10 req/s for the whole API, not per IP.
+- [ ] `make smoke`. **Not done:** `eval/smoke.py` does not exist; smoke checks have been run by hand.
+- [x] Saved audits: `GET /audits/{id}` returns a persisted report (30-day TTL) and the UI has a copy-link button.
+- [ ] CloudWatch: structured JSON logs and X-Ray tracing on. **Not done: the alarms.**
+- [ ] **Audit our own template.** Done against the deployed tool: every edge GROUNDED. **Not done:** freezing that report as a demo input.
 
 **Gate 4B:**
 - [ ] A teammate on mobile data, not on the venue Wi-Fi, opens the URL and completes a full audit with no help.
 - [ ] `make deploy` works from a clean clone with no manual console steps.
 - [ ] Destroying and redeploying the stack reproduces identical verdicts for the frozen inputs.
-- [ ] Our own SAM template audits clean, and we can explain any edge that is not `GROUNDED`.
+- [x] Our own SAM template audits clean: apigateway→lambda, lambda→dynamodb, lambda→s3 all GROUNDED.
 
 ---
 
 ### Stage 5 — Frontend (H2–H28, on fixtures until H14)
 
-- [ ] Input screen: tabs for Template / Mermaid / Prose (prose disabled with message when `llm=none`).
-- [ ] Graph view with edge colours per label and a legend using both colour and icon/text (not colour alone).
-- [ ] Click edge → count, label, evidence links, rule doc link, repair paths.
+- [x] Input screen: tabs for Mermaid / SAM-CFN / Prose; the prose button is disabled with a message when `llm=none`.
+- [x] Graph view (React Flow, layered layout) with edge colour, dash pattern and glyph per label, and a legend using colour, mark and text.
+- [x] Click edge → opens its schedule row: count, label, evidence links, rule doc link, repair paths with per-hop evidence.
 - [ ] "Apply repair" preview: shows the repaired graph with new hops and their evidence.
-- [ ] Node flags displayed as badges with the "Do you need both?" note.
-- [ ] Closest patterns panel.
-- [ ] Corpus banner: commit, coverage, "absence from corpus ≠ nonexistence".
+- [x] Node flags displayed as badges on the diagram and as review notes with the "Do you need both?" question.
+- [x] Closest patterns panel ("Reference precedents", with containment scale bars).
+- [ ] Corpus banner: commit and the absence note are shown. **Not done:** parse coverage is not displayed.
 - [ ] "How this was computed" drawer showing `timings_ms` and canon methods.
-- [ ] Prose flow: the extracted graph is **always** shown in an editable confirmation step before the audit runs. Post-processing rewrites from sections 3.7 and 3.8 are surfaced as "we corrected this, here is why".
-- [ ] A plain notice stating that prose is sent to Bedrock for extraction, and what the retention setting is. Template and Mermaid input never leaves the audit Lambda.
-- [ ] Shareable audit link with a copy button.
+- [x] Prose flow: the extracted graph is **always** shown in an editable confirmation step before the audit runs. Post-processing rewrites from sections 3.7 and 3.8 are surfaced as "we corrected this, here is why".
+- [ ] A plain notice that prose is sent to Bedrock. **Not done:** the retention setting is not stated, because it has not been verified. Template and Mermaid input never leaves the audit Lambda.
+- [x] Shareable audit link (`?audit=<id>`) with a copy button.
 
 **Gate 5:** a teammate who didn't build the UI can run all 3 demo inputs and explain every colour without help.
 
@@ -830,20 +836,20 @@ The track is SHIP IT, so this is critical path, not polish.
 
 ### Stage 7 — Extraction layer (H20–H30), only after Gate 4
 
-- [ ] `extract/llm/client.py` per section 3.4, with tests using `LLM_PROVIDER=none` and recorded cache fixtures.
-- [ ] `prose_extract.py` two-step extraction per section 3.6.
-- [ ] `core/extract_postprocess.py` per sections 3.7 and 3.8, **tests written first**. This is deterministic code in `core/` and must not import anything from `extract/llm/`.
-- [ ] **Model bake-off on the real E3 set:** run all 10 designs on `zai.glm-4.7-flash`, `mistral.ministral-3-8b-instruct`, `qwen.qwen3-32b`, and local `qwen2.5:7b`. Score clean F1 **and** injection F1 separately. Re-pin `BEDROCK_MODEL` from the result, not from section 3.2.
-- [ ] Prose sanitizer: strip imperative sentences addressed at a model, cap input length.
-- [ ] Secrets Manager wired, key cached across warm invocations, rotation tested by changing the secret without redeploying.
-- [ ] `/extract` wired to the confirm-and-edit UI.
+- [x] `extract/llm/client.py` per section 3.4, with tests for the `none` provider, cache replay, retries and the one repair retry.
+- [x] `prose_extract.py` two-step extraction per section 3.6.
+- [x] `core/extract_postprocess.py` per sections 3.7 and 3.8, **tests written first**. This is deterministic code in `core/` and must not import anything from `extract/llm/`.
+- [ ] **Model bake-off on the real E3 set.** Pilot done on 2 designs only (glm-4.7-flash 1.00, qwen3-32b 0.00 under injection); the 10-design E3 set does not exist yet. run all 10 designs on `zai.glm-4.7-flash`, `mistral.ministral-3-8b-instruct`, `qwen.qwen3-32b`, and local `qwen2.5:7b`. Score clean F1 **and** injection F1 separately. Re-pin `BEDROCK_MODEL` from the result, not from section 3.2.
+- [x] Prose sanitizer: strips lines addressed at a model, caps input length.
+- [x] Secrets Manager wired and cached; the key was set by changing the secret after deploy, with no redeploy.
+- [x] `/extract` wired to the confirm-and-edit UI (verified locally; deployed frontend pending).
 - [ ] Optional narrative: receives only the `AuditReport` JSON, may reference only pattern IDs present in it, post-validation strips unknown IDs, falls back to the deterministic summary.
 
 **Gate 7:**
 - [ ] Prose demo input extracts correctly 3 runs out of 3 on the deployed endpoint.
-- [ ] Removing the Bedrock key leaves template and Mermaid audits fully working, and the prose tab degrades with a clear message.
+- [x] With no Bedrock key, template and Mermaid audits work fully and the prose tab explains why it is off.
 - [ ] E5 injection tests pass (section 8), including the "drop all other edges" attack that broke `qwen.qwen3-32b`.
-- [ ] Post-processor unit tests cover all three error classes in section 3.7.
+- [x] Post-processor unit tests cover all three error classes in section 3.7.
 
 ---
 

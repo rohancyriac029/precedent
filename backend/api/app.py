@@ -17,7 +17,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Ensure .env is loaded if present
-_env_path = Path(__file__).resolve().parent.parent / ".env"
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+_env_path = _BACKEND_ROOT / ".env"
 if _env_path.exists():
     with open(_env_path, "r", encoding="utf-8") as f:
         for line in f:
@@ -85,7 +86,11 @@ def get_edge_store():
             return DynamoStore(EDGES_TABLE)
         except Exception:
             pass
+    # Resolve relative to backend/, not the current directory, so the API
+    # finds its index however it is launched.
     db_path = Path(os.environ.get("DB_PATH", "data/precedent.sqlite"))
+    if not db_path.is_absolute():
+        db_path = _BACKEND_ROOT / db_path
     if db_path.exists():
         return open_store(db_path)
     # Return empty DynamoStore as fallback

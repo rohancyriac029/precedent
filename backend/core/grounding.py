@@ -208,26 +208,39 @@ def summarize(verdicts: list[EdgeVerdict], nodes: list[NodeVerdict]) -> str:
         counts[v.label] = counts.get(v.label, 0) + 1
     total = len(verdicts)
 
-    parts = [f"{counts.get('GROUNDED', 0)} of {total} connections are well precedented"]
+    # Singular and plural verb forms. This sentence is the headline of every
+    # report, and "1 have no precedent" reads as broken.
+    def n(count: int, one: str, many: str) -> str:
+        return f"{count} {one if count == 1 else many}"
+
+    grounded = counts.get("GROUNDED", 0)
+    parts = [
+        f"{grounded} of {total} connection{'' if total == 1 else 's'} "
+        f"{'is' if grounded == 1 else 'are'} well precedented"
+    ]
     if counts.get("RARE"):
-        parts.append(f"{counts['RARE']} appear in only one or two patterns")
+        parts.append(n(counts["RARE"], "appears in only one or two patterns",
+                       "appear in only one or two patterns"))
     if counts.get("UNSUPPORTED"):
         unsupported = [v for v in verdicts if v.label == "UNSUPPORTED"]
         names = ", ".join(f"{v.src_service} to {v.dst_service}" for v in unsupported[:2])
-        parts.append(f"{len(unsupported)} are not supported as a direct integration ({names})")
+        parts.append(n(len(unsupported), "is not supported as a direct integration",
+                       "are not supported as a direct integration") + f" ({names})")
     if counts.get("UNPRECEDENTED_IN_CORPUS"):
-        parts.append(
-            f"{counts['UNPRECEDENTED_IN_CORPUS']} have no precedent in this corpus"
-        )
+        parts.append(n(counts["UNPRECEDENTED_IN_CORPUS"], "has no precedent in this corpus",
+                       "have no precedent in this corpus"))
     if counts.get("UNKNOWN_SERVICE"):
-        parts.append(f"{counts['UNKNOWN_SERVICE']} involve a service outside our vocabulary")
+        parts.append(n(counts["UNKNOWN_SERVICE"], "involves a service outside our vocabulary",
+                       "involve a service outside our vocabulary"))
 
-    overlaps = sum(1 for n in nodes if "OVERLAPPING_CAPABILITY" in n.flags)
-    orphans = sum(1 for n in nodes if "ORPHAN" in n.flags)
+    overlaps = sum(1 for n_ in nodes if "OVERLAPPING_CAPABILITY" in n_.flags)
+    orphans = sum(1 for n_ in nodes if "ORPHAN" in n_.flags)
     if overlaps:
-        parts.append(f"{overlaps} components may overlap in capability")
+        parts.append(n(overlaps, "component may overlap in capability",
+                       "components may overlap in capability"))
     if orphans:
-        parts.append(f"{orphans} components are not connected to anything")
+        parts.append(n(orphans, "component is not connected to anything",
+                       "components are not connected to anything"))
 
     return "; ".join(parts) + "."
 

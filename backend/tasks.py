@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+FRONTEND = ROOT.parent / "frontend"   # backend/ and frontend/ are siblings
 CORPUS_DIR = ROOT / "corpus" / "serverless-patterns"
 CORPUS_REPO = "https://github.com/aws-samples/serverless-patterns"
 
@@ -40,6 +41,16 @@ def _sam() -> str:
     return "sam"  # let it fail with a clear message
 
 
+def _npm() -> str:
+    """Locate npm.
+
+    On Windows npm is `npm.cmd`, and subprocess without a shell cannot resolve a
+    .cmd file from a bare name, so `["npm", ...]` fails with FileNotFoundError.
+    shutil.which honours PATHEXT and finds it.
+    """
+    return shutil.which("npm") or "npm"
+
+
 TASKS: dict[str, list[list[str]]] = {
     "census": [[sys.executable, "-m", "indexer.census"]],
     "index": [[sys.executable, "-m", "indexer.build_index"]],
@@ -49,7 +60,7 @@ TASKS: dict[str, list[list[str]]] = {
         [sys.executable, "-m", "uvicorn", "api.app:app",
          "--host", "127.0.0.1", "--port", "8000", "--reload"]
     ],
-    "web": [["npm", "run", "dev"]],
+    "web": [[_npm(), "run", "dev"]],
     "build": [[_sam(), "build", "--template", "infra/template.yaml"]],
     "validate": [[_sam(), "validate", "--template", "infra/template.yaml", "--lint"]],
     "deploy": [[_sam(), "deploy", "--template", "infra/template.yaml"]],
@@ -58,7 +69,7 @@ TASKS: dict[str, list[list[str]]] = {
     "smoke": [[sys.executable, "-m", "eval.smoke"]],
 }
 
-CWD_OVERRIDE = {"web": ROOT / "web"}
+CWD_OVERRIDE = {"web": FRONTEND}
 
 
 LAMBDA_DEPS = ["pydantic", "pyyaml", "networkx", "httpx"]
@@ -147,6 +158,78 @@ def task_package() -> int:
     return 0
 
 
+AMPLIFY_APP = "precedent"
+AMPLIFY_BRANCH = "main"
+STACK = "precedent"
+REGION = "ap-south-1"
+
+
+def task_web_deploy() -> int:
+    """Build the frontend against the deployed API and publish it to Amplify.
+
+    Manual deployment, no Git connection: the app and branch are created on
+    first run and reused after that. Prints the public URL.
+    """
+    import io
+    import time
+    import urllib.request
+    import zipfile
+
+    import boto3
+
+    cf = boto3.client("cloudformation", region_name=REGION)
+    outputs = {o["OutputKey"]: o["OutputValue"]
+               for o in cf.describe_stacks(StackName=STACK)["Stacks"][0]["Outputs"]}
+    api = outputs["ApiUrl"]
+    print(f"API: {api}")
+
+    env = dict(os.environ, VITE_API_BASE=api)
+    rc = subprocess.call([_npm(), "run", "build"], cwd=str(FRONTEND), env=env)
+    if rc != 0:
+        return rc
+    dist = FRONTEND / "dist"
+
+    # Forward-slash paths with index.html at the root. A zip made by Windows'
+    # own tooling uses backslashes, and Amplify then serves nothing.
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted(dist.rglob("*")):
+            if f.is_file():
+                z.write(f, f.relative_to(dist).as_posix())
+    payload = buf.getvalue()
+    print(f"bundle: {len(payload) / 1024:.0f} KB")
+
+    amp = boto3.client("amplify", region_name=REGION)
+    app = next((a for a in amp.list_apps()["apps"] if a["name"] == AMPLIFY_APP), None)
+    if app is None:
+        app = amp.create_app(name=AMPLIFY_APP, platform="WEB",
+                             description="Precedent frontend")["app"]
+        print(f"created Amplify app {app['appId']}")
+    app_id = app["appId"]
+    branches = [b["branchName"] for b in amp.list_branches(appId=app_id)["branches"]]
+    if AMPLIFY_BRANCH not in branches:
+        amp.create_branch(appId=app_id, branchName=AMPLIFY_BRANCH, stage="PRODUCTION")
+        print(f"created branch {AMPLIFY_BRANCH}")
+
+    dep = amp.create_deployment(appId=app_id, branchName=AMPLIFY_BRANCH)
+    req = urllib.request.Request(dep["zipUploadUrl"], data=payload, method="PUT",
+                                 headers={"Content-Type": "application/zip"})
+    urllib.request.urlopen(req, timeout=120).read()
+    amp.start_deployment(appId=app_id, branchName=AMPLIFY_BRANCH, jobId=dep["jobId"])
+
+    for _ in range(90):
+        status = amp.get_job(appId=app_id, branchName=AMPLIFY_BRANCH,
+                             jobId=dep["jobId"])["job"]["summary"]["status"]
+        if status in ("SUCCEED", "FAILED", "CANCELLED"):
+            break
+        time.sleep(2)
+    print(f"deployment {dep['jobId']}: {status}")
+    if status != "SUCCEED":
+        return 1
+    print(f"live at https://{AMPLIFY_BRANCH}.{app['defaultDomain']}")
+    return 0
+
+
 def task_corpus() -> int:
     """Clone the corpus at depth 1 and record the pinned commit."""
     if CORPUS_DIR.exists():
@@ -171,7 +254,7 @@ def task_corpus() -> int:
 def main(argv: list[str]) -> int:
     if not argv or argv[0] in {"--list", "-l", "help", "--help"}:
         print("tasks:")
-        for name in ["corpus", "package", *TASKS]:
+        for name in ["corpus", "package", "web-deploy", *TASKS]:
             print(f"  {name}")
         return 0
 
@@ -183,6 +266,9 @@ def main(argv: list[str]) -> int:
 
     if name == "package":
         return task_package()
+
+    if name == "web-deploy":
+        return task_web_deploy()
 
     if name not in TASKS:
         print(f"unknown task: {name}", file=sys.stderr)

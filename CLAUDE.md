@@ -31,17 +31,32 @@ SHIP IT. The deliverable is a deployed app with a public URL, not a laptop tool.
 Deployment is on the critical path, not a stretch goal. See section 1 of the plan for
 the table of which named AWS services we use and which we deliberately do not.
 
-## Running things
+## Layout
 
 ```
-make test          # pytest
-make census        # corpus stats (needs make corpus first)
-make api           # local FastAPI on :8000
+backend/    Python: core/, extract/, indexer/, api/, lambda_src/, infra/, data/, tests/
+frontend/   Vite app. Talks to the API through the dev proxy at /api.
+docs/       PLAN.md
+```
+
+All Python paths in these rules are relative to `backend/`.
+
+## Running things
+
+`make` is usually missing on Windows; `tasks.py` does the same everywhere.
+
+```
+cd backend
+python tasks.py test      # pytest
+python tasks.py census    # corpus stats (needs `python tasks.py corpus` first)
+python tasks.py index     # build data/precedent.sqlite, required before the API returns real counts
+python tasks.py api       # local FastAPI on :8000
+python tasks.py web       # frontend dev server on :5173, proxies /api to :8000
 ```
 
 ## Conventions
 
-- `core/` is pure and deterministic. It may import `data/`, never `extract/`.
+- `backend/core/` is pure and deterministic. It may import `data/`, never `extract/`.
 - Service-level edges `(src_service, dst_service)` are the unit everything agrees on:
   parsers emit them, labels are computed on them, evals score them.
 - Anything the post-processor rewrites must be recorded in `graph.warnings` so the
