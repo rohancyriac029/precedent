@@ -160,11 +160,11 @@ Run through this list at hours 0, 20, 34, and before submission. If any answer t
 ### Differentiation
 - [ ] We can explain in 20 seconds how this differs from the AWS Well-Architected IaC Analyzer (they check best practices with an LLM; we ground each edge deterministically in real templates).
 - [ ] We can explain "why not just ChatGPT" without saying "better prompt".
-- [ ] If Bedrock is removed (`LLM_PROVIDER=none`), template and Mermaid audits still work end to end. Prose input degrades with a clear message; nothing else breaks.
+- [x] If Bedrock is removed (`LLM_PROVIDER=none`), template and Mermaid audits still work end to end. Prose input degrades with a clear message; nothing else breaks.
 
 ### Honesty
 - [ ] No UI text or slide says "novel", "original", or "proves". We say "unprecedented in corpus".
-- [ ] Corpus commit hash and parse coverage are visible in the UI.
+- [ ] Corpus commit hash and parse coverage are visible in the UI. **Not done:** parse coverage is not shown in the UI; the commit is.
 - [ ] Every `UNSUPPORTED` rule has a doc URL.
 - [ ] Every number on slides comes from `eval/results/*.json`.
 
@@ -229,12 +229,12 @@ These numbers are from a real run on 2026-09-18, two hand-labelled prose designs
 
 ### 3.3 Endpoint and credentials
 
-- [ ] **Endpoint:** `https://bedrock-mantle.<region>.api.aws/v1`, OpenAI-compatible. Verified working on `ap-south-1`.
-- [ ] **These models are not on `bedrock-runtime`.** `InvokeModel` and the `bedrock-runtime` OpenAI path both return `Operation not allowed` for them. A Lambda therefore cannot reach them through boto3 and an IAM role. It must make an HTTPS call to the mantle endpoint with a bearer token.
-- [ ] **Consequence for deployment:** the API key lives in **Secrets Manager**, the Lambda execution role gets `secretsmanager:GetSecretValue` for that one secret, and the client caches it across warm invocations. Never an environment variable, never in the repo.
+- [x] **Endpoint:** `https://bedrock-mantle.<region>.api.aws/v1`, OpenAI-compatible. Verified working on `ap-south-1`.
+- [x] **These models are not on `bedrock-runtime`.** `InvokeModel` and the `bedrock-runtime` OpenAI path both return `Operation not allowed` for them. A Lambda therefore cannot reach them through boto3 and an IAM role. It must make an HTTPS call to the mantle endpoint with a bearer token.
+- [x] **Consequence for deployment:** the API key lives in **Secrets Manager**, the Lambda execution role gets `secretsmanager:GetSecretValue` for that one secret, and the client caches it across warm invocations. Never an environment variable, never in the repo.
 - [ ] **The hackathon key is temporary.** Confirm at H0 how long the issued key lasts and whether a longer-lived one is available. A key that expires mid-judging is a demo-ending failure. Mitigation is in section 12.
 - [ ] **Data retention:** the model list reports a `data_retention` field, currently `default`, with `none` among the allowed modes. Check whether `none` can be set for our calls, and say plainly in the UI and README what happens to pasted text. Do not claim privacy we have not verified.
-- [ ] Use `/chat/completions` with `response_format: {type: json_schema, strict: true}`. It behaved better than `/responses` in testing.
+- [x] Use `/chat/completions` with `response_format: {type: json_schema, strict: true}`. It behaved better than `/responses` in testing.
 - [ ] `GET /v1/models` works and is a cheap health check for `/health`.
 
 ### 3.4 LLM client requirements (`extract/llm/client.py`)
@@ -247,14 +247,14 @@ class LLMClient(Protocol):
                       task: str) -> LLMResult: ...
 ```
 
-- [ ] **Providers:** `none` (raises `LLMDisabled`), `bedrock` (HTTPS to the mantle endpoint), `ollama` (localhost:11434, for offline development only).
-- [ ] **Structured output is mandatory.** Every call passes a JSON schema with `strict: true`, and every response is validated again with Pydantic. Never call a model without a schema: with no schema, both local models produced 0% parseable JSON; with one, 100%.
-- [ ] **One repair retry:** on validation failure, send the error back once. If it fails again, return the partial result plus errors. Never loop.
-- [ ] **Disk/S3 cache:** key = sha256(provider + model + task + system + user + schema). Local dev uses `.cache/llm/`; the deployed Lambda uses an S3 prefix. Cache hits make the demo and the evals reproducible.
-- [ ] **Retry on 429/5xx:** exponential backoff 1s, 2s, 4s, 8s with jitter, max 4 tries, respect `retry-after`.
-- [ ] **Timeouts:** `LLM_TIMEOUT_S`, default 30 for Bedrock and 120 for Ollama. Must stay under the API Gateway 29 s integration timeout, so prose extraction runs as its own request and never inside an audit.
-- [ ] **Logging:** one JSON line per call to CloudWatch: task, provider, model, cache_hit, latency_ms, tokens, validation_ok, retries. No user content in logs.
-- [ ] **Offline mode:** `LLM_OFFLINE=1` serves cache only; a miss raises `LLMCacheMiss`. This is the demo backup.
+- [x] **Providers:** `none` (raises `LLMDisabled`), `bedrock` (HTTPS to the mantle endpoint), `ollama` (localhost:11434, for offline development only).
+- [x] **Structured output is mandatory.** Every call passes a JSON schema with `strict: true`, and every response is validated again with Pydantic. Never call a model without a schema: with no schema, both local models produced 0% parseable JSON; with one, 100%.
+- [x] **One repair retry:** on validation failure, send the error back once. If it fails again, return the partial result plus errors. Never loop.
+- [ ] **Disk/S3 cache:** key = sha256(provider + model + task + system + user + schema). Local dev uses `.cache/llm/`; the deployed Lambda uses an S3 prefix. Cache hits make the demo and the evals reproducible. **Not done:** the deployed Lambda caches in `/tmp` (lost on cold start), not in S3.
+- [x] **Retry on 429/5xx:** exponential backoff 1s, 2s, 4s, 8s with jitter, max 4 tries, respect `retry-after`.
+- [x] **Timeouts:** `LLM_TIMEOUT_S`, default 30 for Bedrock and 120 for Ollama. Must stay under the API Gateway 29 s integration timeout, so prose extraction runs as its own request and never inside an audit.
+- [x] **Logging:** one JSON line per call to CloudWatch: task, provider, model, cache_hit, latency_ms, tokens, validation_ok, retries. No user content in logs.
+- [x] **Offline mode:** `LLM_OFFLINE=1` serves cache only; a miss raises `LLMCacheMiss`. This is the demo backup.
 
 ### 3.5 `.env.example`
 
@@ -297,9 +297,9 @@ This design is what makes small and mid-size models usable, and it is the only d
 
 **What the enum does not protect.** No model preserved the correct edge *set* under injection. Scores fell to 0.74 for the pinned model and to 0.00 for `qwen.qwen3-32b`. Therefore:
 
-- [ ] Prose is sanitized before extraction: strip or neutralize imperative sentences addressed at a model, and cap length.
-- [ ] **The user-confirmation step is mandatory, not a nicety.** The extracted graph is always shown for review and editing before any audit runs. This is the control that makes the prose path safe, and it should be described that way in the pitch.
-- [ ] Verdict labels are computed after confirmation and are deterministic, so no text in the design can change a label.
+- [x] Prose is sanitized before extraction: strip or neutralize imperative sentences addressed at a model, and cap length.
+- [x] **The user-confirmation step is mandatory, not a nicety.** The extracted graph is always shown for review and editing before any audit runs. This is the control that makes the prose path safe, and it should be described that way in the pitch.
+- [x] Verdict labels are computed after confirmation and are deterministic, so no text in the design can change a label.
 
 ### 3.7 Deterministic post-processing (`core/extract_postprocess.py`)
 
@@ -311,9 +311,9 @@ Every model tested made the **same three mistakes**, in every run. Systematic er
 | **Auth attachment** | Cognito described as sitting in front of the API never becomes an edge; models emit the reverse direction or nothing | An identity service connects **into** the API-front node it protects. Pick the API-front node it is actually adjacent to, not merely the first one in the list. |
 | **Pull direction** | A Lambda described as polling a queue produces an edge from the Lambda into the queue | For queue and stream sources, the source is the queue. Normalize to queue into consumer. |
 
-- [ ] Implement as a pure function over `ArchitectureGraph`, table-driven from `data/vocabulary.yaml`, with no model call.
-- [ ] Write the tests first, using the two worked examples above.
-- [ ] Every rewrite is recorded in `graph.warnings` so the confirmation UI can show what was changed and why.
+- [x] Implement as a pure function over `ArchitectureGraph`, table-driven from `data/vocabulary.yaml`, with no model call.
+- [x] Write the tests first, using the two worked examples above.
+- [x] Every rewrite is recorded in `graph.warnings` so the confirmation UI can show what was changed and why.
 
 **Known bug to avoid:** the first draft of the auth rule attached Cognito to whichever API-front node appeared first, wiring it to CloudFront in a design where CloudFront was listed before API Gateway. Choose by adjacency in the extracted graph, not by list order.
 
@@ -323,17 +323,17 @@ The best fix available, and it reuses an asset already being built.
 
 The indexer produces `count(src, dst)` for every service pair. When an extracted edge has `count(a, b) == 0` and `count(b, a)` is high, the direction is almost certainly reversed. Flip it and record the flip in `warnings`.
 
-- [ ] Threshold and behaviour configurable; default flip when `count(b,a) >= 3` and `count(a,b) == 0`.
-- [ ] Runs after section 3.7 and before the confirmation step.
-- [ ] Fully deterministic, needs no new data, and repairs the pull-direction class of error using real precedent.
-- [ ] Never flip an edge the user has confirmed or edited by hand.
+- [x] Threshold and behaviour configurable; default flip when `count(b,a) >= 3` and `count(a,b) == 0`.
+- [x] Runs after section 3.7 and before the confirmation step.
+- [x] Fully deterministic, needs no new data, and repairs the pull-direction class of error using real precedent.
+- [x] Never flip an edge the user has confirmed or edited by hand.
 
 ### 3.9 Cost, quota and latency
 
 - [ ] Prose extraction is 2 calls per design, roughly 300 output tokens each. Cheap, but **measure actual cost on day 1** and record it in `eval/results/`.
 - [ ] Add a per-IP rate limit on `/extract` in API Gateway. A public URL with a model behind it and no limit is an invitation.
-- [ ] Cache aggressively. Demo inputs must be warm before judging.
-- [ ] Audits without prose stay fully deterministic and never call Bedrock at all. Keep that boundary visible in `/health`.
+- [ ] Cache aggressively. Demo inputs must be warm before judging. **Not done:** demo inputs are not frozen, so there is nothing to pre-warm yet.
+- [x] Audits without prose stay fully deterministic and never call Bedrock at all. Keep that boundary visible in `/health`.
 
 ---
 
@@ -1059,7 +1059,7 @@ Audit latency (no LLM): p50 <ms> ms
 - [ ] Template, Mermaid, and prose audits work end to end **on the deployed URL**.
 - [ ] All labels and flags implemented; repair works on the demo edge.
 - [ ] Corpus banner and limitations visible.
-- [ ] Shareable audit links resolve.
+- [x] Shareable audit links resolve.
 
 ### Shipped
 - [ ] Live URL in the README and on the final slide, reachable from outside our network.
@@ -1077,7 +1077,7 @@ Audit latency (no LLM): p50 <ms> ms
 
 ### Reproducibility
 - [ ] `make corpus index load test deploy eval demo-check` works from a clean clone.
-- [ ] Corpus commit pinned and recorded.
+- [x] Corpus commit pinned and recorded.
 - [ ] `.env.example` complete; no secrets committed (check git history too).
 
 ### Presentation
