@@ -48,6 +48,8 @@ from extract.llm.client import (
     from_env as llm_from_env,
 )
 from extract.llm.prose_extract import extract as prose_extract
+from core.retrieve import load as load_passages
+from report import narrative
 
 app = FastAPI(
     title="Precedent API",
@@ -109,6 +111,10 @@ def get_corpus_graph():
 class ExtractRequest(BaseModel):
     content: str
     input_type: Optional[str] = "prose"
+
+
+class AskRequest(BaseModel):
+    question: str
 
 
 class AuditRequest(BaseModel):
@@ -335,3 +341,36 @@ def _save_audit(audit_id: str, payload: dict) -> None:
             )
         except Exception as exc:
             print(f"failed to save audit to ddb: {exc}")
+
+
+def _about_audit(audit_id: str, kind: str, question: Optional[str] = None):
+    """Local mirror of the extract Lambda's review and ask routes."""
+    started = time.time()
+    report = get_audit(audit_id)  # raises 404 when absent
+    try:
+        client = llm_from_env()
+        if kind == "review":
+            out = narrative.review(report, client, load_passages(), _VOCAB)
+        else:
+            out = narrative.ask(report, question or "", client, load_passages(), _VOCAB)
+    except LLMDisabled as exc:
+        raise HTTPException(status_code=503, detail={"error": "llm_disabled", "message": str(exc)})
+    except LLMCacheMiss as exc:
+        raise HTTPException(status_code=503, detail={"error": "offline_cache_miss", "message": str(exc)})
+    except LLMError as exc:
+        raise HTTPException(status_code=503, detail={"error": "llm_failed", "message": str(exc)})
+    out["audit_id"] = audit_id
+    out["timings_ms"] = {"total": int((time.time() - started) * 1000)}
+    return out
+
+
+@app.post("/audits/{audit_id}/review")
+def review_audit(audit_id: str):
+    return _about_audit(audit_id, "review")
+
+
+@app.post("/audits/{audit_id}/ask")
+def ask_audit(audit_id: str, req: AskRequest):
+    if not req.question.strip():
+        raise HTTPException(status_code=400, detail={"error": "bad_request", "message": "question is required"})
+    return _about_audit(audit_id, "ask", req.question)

@@ -113,7 +113,7 @@ Resources:
     Properties:
       CodeUri: ../build/lambda/
       Handler: handler_extract.handler
-      Description: Prose extraction. The only function that calls a model.
+      Description: Prose extraction, audit review and Q&A. The only function that calls a model.
       Timeout: 29          # must stay under the API Gateway integration limit
       MemorySize: 512
       Environment:
@@ -125,6 +125,9 @@ Resources:
       Policies:
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Ref BedrockApiKey
+        # Review and Q&A read the saved report by id; they never write to it.
+        - DynamoDBReadPolicy:
+            TableName: !Ref AuditsTable
       Events:
         Extract:
           Type: HttpApi
@@ -138,6 +141,18 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /extract/health
             Method: GET
+        ReviewAudit:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /audits/{auditId}/review
+            Method: POST
+        AskAudit:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /audits/{auditId}/ask
+            Method: POST
 
   # The key is never an environment variable and never in the repo.
   # Its value is set out of band; see TRACKING.md.

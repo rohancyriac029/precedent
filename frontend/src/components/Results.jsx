@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import ArchitectureGraph from './ArchitectureGraph.jsx'
 import ConnectionSchedule from './ConnectionSchedule.jsx'
+import { AskPanel, ReviewCard } from './Review.jsx'
 import { SectionMark } from './Primitives.jsx'
 import { External, VerdictGlyph } from './Glyphs.jsx'
 import { VERDICT_ORDER, tally } from '../lib/verdicts.js'
@@ -122,7 +123,7 @@ function Notes({ report }) {
 }
 
 const Results = forwardRef(function Results(
-  { report, selected, onSelect, onShare, onDownload, onPrint, onReset },
+  { report, aiOn, selected, onSelect, onShare, onDownload, onPrint, onReset },
   ref,
 ) {
   return (
@@ -147,6 +148,9 @@ const Results = forwardRef(function Results(
 
         <TitleBlock report={report} />
         <Tally edges={report.edges} />
+
+        {/* model-drafted, and only when a model is configured on the server */}
+        {aiOn && report.edges?.length ? <ReviewCard report={report} /> : null}
 
         <ArchitectureGraph report={report} selected={selected} onSelect={onSelect} />
 
@@ -181,6 +185,8 @@ const Results = forwardRef(function Results(
           </div>
           <Precedents patterns={report.closest_patterns} />
         </div>
+
+        {aiOn && report.edges?.length ? <AskPanel report={report} /> : null}
 
         <div className="results__block">
           <div className="block-head">

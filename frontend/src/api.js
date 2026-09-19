@@ -69,7 +69,11 @@ async function request(path, { method = 'GET', body } = {}) {
 export async function getHealth() {
   const [core, extract] = await Promise.all([
     request('/health'),
-    request('/extract/health').catch(() => null),
+    // One retry: a cold start or a deploy in progress should not hide the
+    // model features for the rest of the visit.
+    request('/extract/health')
+      .catch(() => new Promise((r) => setTimeout(r, 1500)).then(() => request('/extract/health')))
+      .catch(() => null),
   ])
   return extract?.llm ? { ...core, llm: extract.llm, model: extract.model } : core
 }
@@ -84,5 +88,12 @@ export function runAudit({ inputType, content, graph }) {
 export function extractProse(content) {
   return request('/extract', { method: 'POST', body: { input_type: 'prose', content } })
 }
+
+// Review and Q&A run in the extract function, the only one that calls a model.
+// The server loads the saved report by id; the browser never sends it.
+export const reviewAudit = (id) =>
+  request(`/audits/${encodeURIComponent(id)}/review`, { method: 'POST', body: {} })
+export const askAudit = (id, question) =>
+  request(`/audits/${encodeURIComponent(id)}/ask`, { method: 'POST', body: { question } })
 
 export const API_BASE = BASE

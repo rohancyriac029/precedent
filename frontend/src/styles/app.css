@@ -1418,6 +1418,239 @@
 
 /* ================================================================ responsive */
 
+/* ================================================================ review and ask */
+
+/* A model-drafted note sits on the sheet like a reviewer's markup: a card with
+   a lavender margin rule, set apart from the computed verdicts but in the same
+   hand. Lavender is otherwise unused for verdict meaning in this block. */
+.review,
+.qa {
+  position: relative;
+  padding: 18px 20px 16px 22px;
+  border: 1px solid var(--rule-2);
+  border-radius: 3px;
+  background: var(--card);
+}
+.review::before,
+.qa::before {
+  content: '';
+  position: absolute;
+  inset: -1px auto -1px -1px;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  background: var(--lavender-stroke);
+}
+.review-block {
+  margin-bottom: 32px;
+}
+.review__status {
+  margin-bottom: 12px;
+}
+.review__headline {
+  max-width: 72ch;
+  margin-bottom: 12px;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.review__points {
+  max-width: 80ch;
+  gap: 10px;
+  line-height: 1.6;
+}
+.review__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 20px;
+  margin-top: 14px;
+}
+.review__fine {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* citations: small mono tags that read like drawing references */
+.cites {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: 2px;
+  vertical-align: 1px;
+}
+.cite {
+  padding: 1px 6px;
+  border: 1px solid var(--lavender-stroke);
+  border-radius: 4px;
+  background: var(--lavender);
+  color: var(--lavender-ink);
+  font-size: 10.5px;
+  line-height: 1.5;
+  text-decoration: none;
+  white-space: nowrap;
+  /* long pattern ids must not push past the card on a phone */
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  transition: background 0.18s var(--ease);
+}
+a.cite:hover {
+  background: var(--card);
+}
+
+/* what the model read, folded away until asked for */
+.sources {
+  flex: 1 1 320px;
+  font-size: 13px;
+}
+.sources summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  list-style: none;
+}
+.sources summary::-webkit-details-marker {
+  display: none;
+}
+.sources summary::before {
+  content: '+';
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--rule-2);
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1;
+}
+.sources[open] summary::before {
+  content: '−';
+}
+.sources summary:hover {
+  color: var(--ink);
+}
+.sources ol {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sources li {
+  padding-left: 12px;
+  border-left: 1px solid var(--rule-2);
+}
+.sources a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.sources a:hover {
+  color: var(--ink);
+}
+.sources p {
+  margin-top: 2px;
+  color: var(--ink-3);
+  line-height: 1.55;
+}
+
+/* loading: faint ruled lines, the way a sheet looks before it is inked */
+.skeleton {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0;
+}
+.skeleton span {
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--paper-2) 0%, var(--paper-3) 50%, var(--paper-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* the conversation */
+.thread {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.qa__q {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 10px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.qa__q .annot {
+  flex: none;
+  color: var(--lavender-ink);
+}
+.qa__a.is-unanswerable .notes {
+  color: var(--ink-3);
+}
+.qa__a .annot {
+  margin-bottom: 6px;
+}
+
+.ask {
+  display: flex;
+  gap: 8px;
+}
+.ask__input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  font-size: 14px;
+  color: var(--ink);
+}
+.ask__input::placeholder {
+  color: var(--ink-4);
+}
+.ask__input:focus {
+  outline: none;
+  border-color: var(--lavender-stroke);
+  box-shadow: 0 0 0 3px var(--lavender);
+}
+.ask .btn {
+  height: 40px;
+}
+.ask__starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.ask__starters .chip {
+  height: auto;
+  min-height: 30px;
+  padding: 5px 12px;
+  text-align: left;
+  line-height: 1.35;
+}
+
 @media (max-width: 1024px) {
   .hero__grid {
     grid-template-columns: 1fr;
@@ -1528,6 +1761,13 @@
 }
 
 @media (max-width: 520px) {
+  .review,
+  .qa {
+    padding: 16px 14px 14px 16px;
+  }
+  .review__headline {
+    font-size: 16px;
+  }
   .status__sub,
   .shortcut,
   .board__hint,

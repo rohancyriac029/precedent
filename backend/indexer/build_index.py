@@ -199,6 +199,9 @@ def main() -> None:
     }
     index_path = ROOT / "data" / "pattern_index.json"
     index_path.write_text(json.dumps(index_payload, separators=(",", ":")), encoding="utf-8")
+    # README passages for review and Q&A are cut from the same pattern set.
+    from indexer import readme_chunks
+    readme_chunks.main()
     print("pattern index    : %d patterns, %.0f KB -> %s" % (
         len(by_pattern), index_path.stat().st_size / 1024, index_path.relative_to(ROOT)))
     conn.close()

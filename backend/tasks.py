@@ -100,8 +100,9 @@ def task_package() -> int:
     build.mkdir(parents=True)
 
     # handler modules and the extraction package
-    shutil.copytree(ROOT / "extract", build / "extract",
-                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    for pkg in ("extract", "report"):
+        shutil.copytree(ROOT / pkg, build / pkg,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     for item in (ROOT / "lambda_src").iterdir():
         if item.is_file() and item.suffix == ".py":
             shutil.copy2(item, build / item.name)
@@ -119,7 +120,7 @@ def task_package() -> int:
     data_dir = build / "data"
     data_dir.mkdir(exist_ok=True)
     for name in ("vocabulary.yaml", "aliases.csv", "integration_rules.csv",
-                 "pattern_index.json"):
+                 "pattern_index.json", "readme_chunks.json"):
         src_file = ROOT / "data" / name
         if not src_file.exists():
             print(f"missing data file: {name}", file=sys.stderr)

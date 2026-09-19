@@ -62,6 +62,8 @@ export default function App() {
   const toastTimer = useRef(0)
 
   const busy = phase === 'extracting' || phase === 'auditing'
+  // Review and Q&A need a model; the deterministic audit never does.
+  const aiOn = health.status === 'online' && !!health.data?.llm && health.data.llm !== 'none'
 
   const notify = (msg) => {
     setToast(msg)
@@ -238,6 +240,7 @@ export default function App() {
           <Results
             ref={resultsRef}
             report={report}
+            aiOn={aiOn}
             selected={selected}
             onSelect={setSelected}
             onShare={share}

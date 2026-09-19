@@ -750,7 +750,7 @@ distort the IDF weighting that closest-pattern ranking depends on.
 - [x] `indexer/build_index.py` writes `patterns` and `edges` to SQLite, plus `data/pattern_index.json` for the Lambda.
 - [x] `indexer/coverage_report.py` writes parse coverage and genuine misses to `eval/results/coverage.json`.
 - [x] Pattern titles/URLs taken from pattern metadata; URLs point to the folder on GitHub at the pinned commit.
-- [ ] BM25 index over README text. **Not built.** Closest patterns use IDF containment instead, so nothing depends on it yet.
+- [x] BM25 index over README text: `indexer/readme_chunks.py` keeps only descriptive passages (1,056 from 327 patterns, 247 KB), `core/retrieve.py` ranks them. Retrieval is restricted to the patterns the audit already cites, so the candidate set is chosen by the deterministic core, never by a model.
 - [ ] `data/integration_rules.csv` filled for P0 source services: 39 rules, every one with a doc URL. **Not done: `verified_by` initials on any row**, so no rule affects a verdict yet. 13 of them are the UNSUPPORTED rules.
 - [ ] `data/aliases.csv` written. **Short of 3 aliases for 5 services:** route53 (0), athena, fargate, lambda_function_url and translate (2 each). Example: (e.g. "S3", "bucket", "object storage", "upload bucket").
 
@@ -843,7 +843,7 @@ The track is SHIP IT, so this is critical path, not polish.
 - [x] Prose sanitizer: strips lines addressed at a model, caps input length.
 - [x] Secrets Manager wired and cached; the key was set by changing the secret after deploy, with no redeploy.
 - [x] `/extract` wired to the confirm-and-edit UI (verified locally; deployed frontend pending).
-- [ ] Optional narrative: receives only the `AuditReport` JSON, may reference only pattern IDs present in it, post-validation strips unknown IDs, falls back to the deterministic summary.
+- [x] Narrative and Q&A (`report/narrative.py`, `POST /audits/{id}/review` and `/ask`, served by the extract function; the audit function still never calls a model). The model sees service-level facts only, never node labels or the input. Citations are a schema enum of the audit's own pattern IDs. Post-validation drops sentences with forbidden wording, pattern IDs the audit does not cite, pattern counts the audit does not state, or "unsupported" without an UNSUPPORTED verdict, and says what it removed. The report is loaded by id from DynamoDB, never taken from the caller. **Not done:** answers are single-turn (no conversation memory), and the review is not persisted with the audit.
 
 **Gate 7:**
 - [ ] Prose demo input extracts correctly 3 runs out of 3 on the deployed endpoint.

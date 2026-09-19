@@ -15,6 +15,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import time
 
 import boto3
@@ -30,9 +31,14 @@ from extract.llm.client import (
     LLMError,
     NoneProvider,
 )
+from core.retrieve import load as load_passages
 from extract.llm.prose_extract import extract
+from report import narrative
 
 _VOCAB = load_vocab()
+_PASSAGES = load_passages()   # README passages for review and Q&A; None if absent
+_AUDITS_TABLE = os.environ.get("DDB_TABLE_AUDITS", "")
+_AUDIT_ROUTE = re.compile(r"/audits/([A-Za-z0-9_-]{1,64})/(review|ask)$")
 _COLD_START = True
 _SECRET_CACHE: dict[str, str] = {}
 
@@ -112,6 +118,10 @@ def handler(event, context):  # noqa: ANN001 - Lambda signature
             "cold_start": cold,
         })
 
+    route = _AUDIT_ROUTE.search(path)
+    if route:
+        return _about_audit(event, route.group(1), route.group(2), cold, started)
+
     try:
         payload = _payload(event)
     except ValueError:
@@ -153,6 +163,62 @@ def handler(event, context):  # noqa: ANN001 - Lambda signature
         "removed": sorted(f"{a} -> {b}" for a, b in before - after),
         "added": sorted(f"{a} -> {b}" for a, b in after - before),
     }
+    out["timings_ms"] = {"total": int((time.time() - started) * 1000)}
+    out["cold_start"] = cold
+    return _response(200, out)
+
+
+def _load_audit(audit_id: str):
+    """The saved report, read from the table the audit function wrote.
+
+    Read by id rather than accepted from the caller, so nobody can hand the
+    model a doctored report and get a review that appears to back it.
+    """
+    if not _AUDITS_TABLE:
+        return None
+    item = boto3.resource("dynamodb").Table(_AUDITS_TABLE).get_item(
+        Key={"audit_id": audit_id}).get("Item")
+    return json.loads(item["report"]) if item else None
+
+
+def _about_audit(event: dict, audit_id: str, kind: str, cold: bool, started: float) -> dict:
+    """POST /audits/{id}/review and POST /audits/{id}/ask. Drafts, never verdicts."""
+    try:
+        payload = _payload(event)
+    except (ValueError, json.JSONDecodeError):
+        return _response(400, {"error": "bad_request", "message": "Body must be JSON."})
+    question = payload.get("question") if kind == "ask" else None
+    if kind == "ask" and (not isinstance(question, str) or not question.strip()):
+        return _response(400, {"error": "bad_request", "message": "question is required"})
+
+    try:
+        report = _load_audit(audit_id)
+    except Exception as exc:
+        print(json.dumps({"level": "error", "load_audit": repr(exc)}))
+        report = None
+    if report is None:
+        return _response(404, {"error": "not_found",
+                               "message": "That audit has expired or does not exist."})
+
+    try:
+        client = _client()
+        if kind == "review":
+            out = narrative.review(report, client, _PASSAGES, _VOCAB)
+        else:
+            out = narrative.ask(report, question, client, _PASSAGES, _VOCAB)
+    except LLMDisabled as exc:
+        return _response(503, {"error": "llm_disabled", "message": str(exc)})
+    except LLMCacheMiss as exc:
+        return _response(503, {"error": "offline_cache_miss", "message": str(exc)})
+    except LLMError as exc:
+        print(json.dumps({"level": "error", kind: repr(exc)}))
+        return _response(503, {"error": "llm_failed",
+                               "message": "The model was unreachable. The audit itself is unaffected."})
+    except Exception as exc:
+        print(json.dumps({"level": "error", kind: repr(exc)}))
+        return _response(500, {"error": "internal_error"})
+
+    out["audit_id"] = audit_id
     out["timings_ms"] = {"total": int((time.time() - started) * 1000)}
     out["cold_start"] = cold
     return _response(200, out)
