@@ -1111,6 +1111,7 @@ Direction = data or control flow (producer → consumer). Access edges point fro
 | A16 | Inline IAM `Statement[].Resource` with `Ref`/`GetAtt`/`Sub` to a resource in template | Principal resource → Resource | action-derived | strong | P1 |
 | A17 | API Gateway AWS service integration (`x-amazon-apigateway-integration` URI naming a service) | API → Service | invokes | strong | P2 |
 | A18 | `Environment.Variables` referencing a resource | Function → Resource | configured_with | weak | P2 |
+| A19 | `AWS::IoT::TopicRule` `Actions[]` and `ErrorAction` (Lambda, DynamoDB, DynamoDBv2, S3, Sns, Sqs, Kinesis, Firehose, StepFunctions); SAM function event `Type: IoTRule` | Rule → Target; IoT Core → Function | action-derived; triggers | strong | P2 |
 
 Rules for all:
 - Resolve `!Ref X`, `!GetAtt X.Arn`, `Fn::Sub` with `${X}` / `${X.Arn}` to logical ID X when X is a resource in the same template.

@@ -189,6 +189,21 @@ NAME_PROPERTIES = (
     "Name",
 )
 
+# IoT TopicRule action key -> (path to the target reference, relation).
+# Only actions whose target is a resource in our vocabulary; the rest (republish,
+# CloudWatch, HTTP) carry no service-to-service edge we can count.
+IOT_RULE_ACTIONS: dict[str, tuple[tuple[str, ...], Relation]] = {
+    "Lambda": (("FunctionArn",), "invokes"),
+    "DynamoDB": (("TableName",), "writes"),
+    "DynamoDBv2": (("PutItem", "TableName"), "writes"),
+    "S3": (("BucketName",), "writes"),
+    "Sns": (("TargetArn",), "publishes"),
+    "Sqs": (("QueueUrl",), "sends"),
+    "Kinesis": (("StreamName",), "writes"),
+    "Firehose": (("DeliveryStreamName",), "writes"),
+    "StepFunctions": (("StateMachineName",), "starts_execution"),
+}
+
 SCHEDULE_EVENTS = {"Schedule", "ScheduleV2"}
 EVENTBRIDGE_EVENTS = {"EventBridgeRule", "CloudWatchEvent", "EventBridge"}
 API_EVENTS = {"Api", "HttpApi"}
@@ -360,6 +375,10 @@ class TemplateParser:
                 self._add(bus or self._synthetic_node("eventbridge"), fn_id, "triggers",
                           f"SAM.Function.Events.{etype}")
 
+            elif etype == "IoTRule":  # A19: SAM declares the rule inline
+                self._add(self._synthetic_node("iot_core"), fn_id, "triggers",
+                          "SAM.Function.Events.IoTRule")
+
     def _policies(self, fn_id: str, props: dict[str, Any]) -> None:
         """Rule A12, plus service-only policies."""
         policies = props.get("Policies")
@@ -405,6 +424,39 @@ class TemplateParser:
                 continue
             dst = self._resolve(target.get("Arn"), f"{logical_id}.Targets[{i}].Arn")
             self._add(source, dst, "triggers", "Events.Rule.Targets")
+
+    def _iot_topic_rule(self, rule_id: str, props: dict[str, Any]) -> None:
+        """Rule A19. The rule is the IoT Core node; each action is an edge out of it.
+
+        ErrorAction has the same shape and is a real delivery path, so it counts.
+        """
+        payload = props.get("TopicRulePayload")
+        if not isinstance(payload, dict):
+            return
+        actions = payload.get("Actions")
+        entries = [(f"Actions[{i}]", a) for i, a in enumerate(actions)]             if isinstance(actions, list) else []
+        if isinstance(payload.get("ErrorAction"), dict):
+            entries.append(("ErrorAction", payload["ErrorAction"]))
+        for where, action in entries:
+            if not isinstance(action, dict):
+                continue
+            for key, spec in action.items():
+                if key not in IOT_RULE_ACTIONS:
+                    continue
+                path, relation = IOT_RULE_ACTIONS[key]
+                value: Any = spec
+                for step in path:
+                    value = value.get(step) if isinstance(value, dict) else None
+                if value is None:
+                    continue
+                if not referenced_logical_ids(value):
+                    self.warnings.append(
+                        f"{rule_id}.{where}.{key}: names a target by literal value, "
+                        f"not a reference; endpoint left unknown."
+                    )
+                    continue
+                dst = self._resolve(value, f"{rule_id}.{where}.{key}")
+                self._add(rule_id, dst, relation, f"IoT.TopicRule.Actions.{key}")
 
     def _bucket_notifications(self, bucket_id: str, props: dict[str, Any]) -> None:
         """Rule A10."""
@@ -822,6 +874,8 @@ class TemplateParser:
                     self._events_rule(logical_id, props)
                 elif rtype == "AWS::S3::Bucket":
                     self._bucket_notifications(logical_id, props)
+                elif rtype == "AWS::IoT::TopicRule":
+                    self._iot_topic_rule(logical_id, props)
                 elif rtype == "AWS::SNS::Subscription":
                     self._sns_subscription(logical_id, props)
                 elif rtype == "AWS::Pipes::Pipe":

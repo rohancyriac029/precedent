@@ -292,3 +292,105 @@ Resources:
               Resource: !GetAtt Role.Arn
 """)
     assert edges(r) == set()
+
+
+# --------------------------------------------------------------------------
+# IoT Core rules (motivated by iot-dynamodb, iot-s3, iot-sns-sqs-sam, iot-lambda)
+# --------------------------------------------------------------------------
+
+
+def test_iot_topic_rule_actions_become_edges():
+    """iot-dynamodb, iot-s3: a TopicRule names its targets in Actions."""
+    r = parse("""
+Resources:
+  Table:
+    Type: AWS::DynamoDB::Table
+  TableTwo:
+    Type: AWS::DynamoDB::Table
+  Bucket:
+    Type: AWS::S3::Bucket
+  ToTable:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      TopicRulePayload:
+        Sql: SELECT * FROM 'a/+'
+        Actions:
+          - DynamoDB:
+              TableName: !Ref Table
+              RoleArn: !GetAtt Role.Arn
+          - DynamoDBv2:
+              PutItem:
+                TableName: !Ref TableTwo
+          - S3:
+              BucketName: !Ref Bucket
+""")
+    assert ("iot_core", "dynamodb") in edges(r)
+    assert ("iot_core", "s3") in edges(r)
+    targets = {e.dst for e in r.graph.edges if e.src == "ToTable"}
+    assert targets == {"Table", "TableTwo", "Bucket"}
+    assert {e.source_construct for e in r.graph.edges} >= {
+        "IoT.TopicRule.Actions.DynamoDB", "IoT.TopicRule.Actions.DynamoDBv2"}
+
+
+def test_iot_topic_rule_messaging_and_compute_targets():
+    """iot-sns-sqs-sam and friends: Sns, Sqs, Lambda, Kinesis, Firehose, StepFunctions."""
+    r = parse("""
+Resources:
+  Topic: {Type: AWS::SNS::Topic}
+  Queue: {Type: AWS::SQS::Queue}
+  Stream: {Type: AWS::Kinesis::Stream}
+  Delivery: {Type: AWS::KinesisFirehose::DeliveryStream}
+  Fn: {Type: AWS::Serverless::Function}
+  Machine: {Type: AWS::Serverless::StateMachine}
+  Rule:
+    Type: 'AWS::IoT::TopicRule'
+    Properties:
+      TopicRulePayload:
+        Sql: SELECT * FROM 'device/data'
+        Actions:
+          - Sns: {TargetArn: !Ref Topic}
+          - Sqs: {QueueUrl: !Ref Queue}
+          - Kinesis: {StreamName: !Ref Stream}
+          - Firehose: {DeliveryStreamName: !Ref Delivery}
+          - Lambda: {FunctionArn: !GetAtt Fn.Arn}
+          - StepFunctions: {StateMachineName: !GetAtt Machine.Name}
+""")
+    e = edges(r)
+    for dst in ("sns", "sqs", "kinesis_streams", "firehose", "lambda", "step_functions"):
+        assert ("iot_core", dst) in e, dst
+
+
+def test_iot_error_action_is_an_edge_and_unresolved_targets_warn():
+    """ErrorAction has the same shape as an action. A literal name is not guessed."""
+    r = parse("""
+Resources:
+  Queue: {Type: AWS::SQS::Queue}
+  Rule:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      TopicRulePayload:
+        Sql: SELECT * FROM 't'
+        Actions:
+          - DynamoDB: {TableName: some-table-elsewhere}
+        ErrorAction:
+          Sqs: {QueueUrl: !Ref Queue}
+""")
+    assert edges(r) == {("iot_core", "sqs")}
+
+
+def test_sam_iot_rule_event_triggers_function():
+    """iot-lambda: the rule is declared inline as a function event."""
+    r = parse("""
+Resources:
+  Fn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Events:
+        FromThing:
+          Type: IoTRule
+          Properties:
+            Sql: SELECT * FROM "$aws/things/x/*"
+""")
+    assert ("iot_core", "lambda") in edges(r)
+    assert any(e.relation == "triggers" and e.source_construct == "SAM.Function.Events.IoTRule"
+               for e in r.graph.edges)
