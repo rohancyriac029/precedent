@@ -72,10 +72,12 @@ class Canonicalizer:
         if hit:
             return hit, "alias", 1.0
 
-        # 2. containment, longest alias first
+        # 2. containment, longest alias first. The match is on whole words (the
+        # padding), so a two-letter alias like "s3" is safe: "S3 Archive" is a
+        # bucket, and "s3" cannot match inside another word.
         padded = f" {text} "
         for alias in self._by_length:
-            if len(alias) < 3:
+            if len(alias) < 2:
                 continue
             if f" {alias} " in padded:
                 return self._aliases[alias], "alias", 0.95

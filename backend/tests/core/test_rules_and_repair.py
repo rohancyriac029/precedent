@@ -190,3 +190,23 @@ def test_graph_excludes_zero_count_and_self_loops():
     assert not g.has_edge("a", "b")
     assert not g.has_edge("c", "c")
     assert g.has_edge("a", "c")
+
+
+def test_a_rare_direct_edge_is_not_offered_as_its_own_alternative():
+    """sqs -> step_functions is in the corpus once, so it is RARE. Suggesting
+    "sqs -> step_functions" as the way around it would be circular."""
+    g = _graph()
+    paths = find_repairs(g, "sqs", "step_functions")
+    assert paths and all(p.hops >= 2 for p in paths)
+    assert paths[0].services == ["sqs", "lambda", "step_functions"]
+
+
+def test_a_cheap_path_after_an_over_long_one_is_still_found():
+    """Paths arrive cheapest first, not shortest first, so exceeding the hop
+    limit once must not end the search."""
+    # four common hops cost about 4.0; three one-pattern hops cost 6.0
+    pairs = [("a", "b", 1000), ("b", "c", 1000), ("c", "d", 1000), ("d", "z", 1000),
+             ("a", "x", 1), ("x", "y", 1), ("y", "z", 1)]
+    g = build_corpus_graph(pairs)
+    paths = find_repairs(g, "a", "z", max_hops=3)
+    assert [p.services for p in paths] == [["a", "x", "y", "z"]]

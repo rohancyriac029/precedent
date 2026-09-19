@@ -93,9 +93,15 @@ def find_repairs(
             if seen > MAX_CANDIDATES:
                 break
             hops = len(services) - 1
+            # Paths come out cheapest first, not shortest first: four common
+            # hops can cost less than three rare ones. So an over-long path is
+            # skipped, not a signal to stop; MAX_CANDIDATES bounds the search.
             if hops > max_hops:
-                break  # paths come out in cost order, so the rest are longer
-            if hops < 1:
+                continue
+            # The direct edge is what is being repaired. For a RARE edge it is
+            # in the corpus graph, and offering it back as its own alternative
+            # would be circular.
+            if hops < 2:
                 continue
             if is_relay is not None and not all(is_relay(x) for x in services[1:-1]):
                 continue  # an intermediate that cannot forward is not a route

@@ -227,3 +227,9 @@ flowchart LR
     assert ("lambda", "dynamodb") in e
     assert ("sns", "sqs") in e
     assert ("eventbridge", "sqs") in e
+
+
+def test_a_two_letter_alias_matches_inside_a_longer_label(canon):
+    """"S3 Archive" is a bucket. The alias "s3" is short, but it is a whole word."""
+    assert canon.resolve("S3 Archive")[0] == "s3"
+    assert canon.resolve("Raw S3 bucket for uploads")[0] == "s3"
