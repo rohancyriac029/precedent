@@ -2,7 +2,8 @@
 //
 // A trimmed Sugiyama approach, written here rather than pulling in dagre:
 //   1. break cycles by reversing DFS back-edges (for layering only)
-//   2. assign each node to the longest-path layer from the sources
+//   2. assign each node to the longest-path layer from the sources, then
+//      pull each node right to sit just before its nearest successor
 //   3. order nodes within a layer by the barycentre of their neighbours,
 //      sweeping down and up a few times to reduce crossings
 //   4. place layers as columns (LR) or rows (TB), centred on each other
@@ -48,13 +49,28 @@ export function layoutGraph(nodeIds, edges, { direction = 'LR' } = {}) {
   }
   const layer = new Map(ids.map((id) => [id, 0]))
   const queue = ids.filter((id) => indeg.get(id) === 0)
+  const topo = []
   while (queue.length) {
     const u = queue.shift()
+    topo.push(u)
     for (const v of succ.get(u)) {
       layer.set(v, Math.max(layer.get(v), layer.get(u) + 1))
       indeg.set(v, indeg.get(v) - 1)
       if (indeg.get(v) === 0) queue.push(v)
     }
+  }
+
+  // Longest-path layering puts every source in the first column. A source
+  // whose only target sits two columns later then draws its edge straight
+  // through the node in between (a DynamoDB stream feeding a Lambda that an
+  // API also invokes). Moving each node as far right as its successors allow,
+  // latest first, keeps edges short without breaking any predecessor.
+  for (let i = topo.length - 1; i >= 0; i--) {
+    const u = topo[i]
+    const next = succ.get(u)
+    if (!next.length) continue
+    const limit = Math.min(...next.map((v) => layer.get(v))) - 1
+    if (limit > layer.get(u)) layer.set(u, limit)
   }
 
   // Orphans sit after the last layer, so they read as "not connected".
