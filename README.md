@@ -521,22 +521,4 @@ python tasks.py load       # push the index to DynamoDB when it changes
 python tasks.py web-deploy # build the frontend against the stack's API and publish to Amplify
 ```
 
-## 13. Limitations and what is not done
 
-- **The corpus is one collection at one commit,** not the whole of AWS. Absence
-  means "not in these patterns".
-- **Only SAM and CloudFormation are parsed.** CDK and Terraform patterns
-  contribute nothing, which is why some real integrations (IoT Core → Kinesis,
-  for one) show no precedent.
-- **No rule is verified yet,** so `UNSUPPORTED` never fires today.
-- **Repair suggests routes one connection at a time.** It does not yet produce a
-  repaired diagram or template.
-- **Q&A is single-turn,** and the review is regenerated rather than stored with
-  the audit.
-- **Deployment gaps:**
-  - CORS is `*` rather than the Amplify origin.
-  - Throttling applies to the whole API, not per IP.
-  - There are no CloudWatch alarms or billing alarm.
-  - The frontend is deployed manually rather than from the repository.
-- **Evaluation sets are not built yet** (E1 to E6 in the plan), so this README
-  quotes no accuracy numbers.
