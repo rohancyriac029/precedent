@@ -1,0 +1,58 @@
+/*
+  Design tokens.
+
+  The language is a drafting sheet rather than a blueprint: warm paper, a faint
+  two-weight grid, graphite ink with hairline rules, and pastel washes that are
+  reserved for meaning. Colour on the page always says something.
+*/
+
+:root {
+  color-scheme: light;
+
+  /* paper and ink */
+  --paper: #fbf8f2;
+  --paper-2: #f5f0e6;
+  --paper-3: #efe8da;
+  --card: #fffdf9;
+  --ink: #23252b;
+  --ink-2: #4a4e57;
+  --ink-3: #7b808a;
+  --ink-4: #a4a8b0;
+  --rule: #e6dfd2;
+  --rule-2: #d6cdbd;
+  --rule-strong: #b9ae9a;
+
+  /* drafting grid */
+  --grid-minor: rgba(96, 124, 152, 0.07);
+  --grid-major: rgba(96, 124, 152, 0.14);
+
+  /* pastel washes: fill, deeper ink for text, stroke for lines */
+  --sage: #d9ebdc;      --sage-ink: #2c6541;     --sage-stroke: #6fae84;
+  --butter: #f8edc4;    --butter-ink: #735510;   --butter-stroke: #d4ae45;
+  --lavender: #e3def5;  --lavender-ink: #4a3f8c; --lavender-stroke: #9186cf;
+  --blush: #f8dad5;     --blush-ink: #8a2f27;    --blush-stroke: #d9786d;
+  --fog: #e8eaee;       --fog-ink: #4a4f58;      --fog-stroke: #a3a9b3;
+  --powder: #d9e8f4;    --powder-ink: #22537a;   --powder-stroke: #82add2;
+  --apricot: #fbe4d2;   --apricot-ink: #874a1c;  --apricot-stroke: #e1a577;
+
+  /* type */
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, Consolas,
+    monospace;
+
+  /* shape */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --shadow-1: 0 1px 0 rgba(35, 37, 43, 0.04), 0 1px 2px rgba(35, 37, 43, 0.04);
+  --shadow-2: 0 1px 0 rgba(35, 37, 43, 0.04), 0 8px 24px -12px rgba(35, 37, 43, 0.18);
+  --shadow-3: 0 24px 60px -28px rgba(35, 37, 43, 0.35);
+
+  /* layout */
+  --page-max: 1240px;
+  --gutter: clamp(18px, 4vw, 40px);
+  --header-h: 64px;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}

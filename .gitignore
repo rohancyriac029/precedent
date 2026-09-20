@@ -8,9 +8,9 @@
 # generated data
 corpus/
 .cache/
-data/precedent.sqlite
+backend/data/precedent.sqlite
 *.sqlite
-eval/results/*.json
+backend/eval/results/*.json
 
 # python
 __pycache__/
@@ -21,7 +21,7 @@ venv/
 
 # node / frontend
 node_modules/
-web/dist/
+frontend/dist/
 
 # sam / aws
 .aws-sam/
